@@ -3,22 +3,40 @@ service: jukebox-app
 provider:
   name: aws
   runtime: python3.11
-  region: us-east-1
+  region: eu-west-2
   stage: ${opt:stage, 'prod'}
   timeout: 30
   memorySize: 512
   
+  apiGateway:
+    binaryMediaTypes:
+      - 'application/pdf'
+      - 'application/octet-stream'
+      - 'multipart/form-data'
+  
   environment:
     FLASK_ENV: production
-    DATABASE_URL: ${env:DATABASE_URL, 'sqlite:///tmp/jukebox.db'}
+    DYNAMODB_TABLE: jukebox-records-${self:provider.stage}
     SECRET_KEY: ${env:SECRET_KEY, ''}
     
   iamRoleStatements:
     - Effect: Allow
       Action:
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+        - dynamodb:BatchGetItem
+      Resource: 
+        - "arn:aws:dynamodb:${self:provider.region}:*:table/jukebox-records-${self:provider.stage}"
+        - "arn:aws:dynamodb:${self:provider.region}:*:table/jukebox-records-${self:provider.stage}/index/*"
+    - Effect: Allow
+      Action:
         - s3:GetObject
         - s3:PutObject
-      Resource: "arn:aws:s3:::jukebox-static-files/*"
+      Resource: "arn:aws:s3:::jukebox-static-files-${self:provider.stage}/*"
 
 functions:
   app:
@@ -32,8 +50,6 @@ functions:
           path: /{proxy+}
           method: ANY
           cors: true
-    layers:
-      - arn:aws:lambda:us-east-1:764866452798:layer:chrome-aws-lambda:25
 
 plugins:
   - serverless-python-requirements
@@ -54,7 +70,7 @@ custom:
   customDomain:
     domainName: jukebox.tcla.me
     stage: ${self:provider.stage}
-    certificateName: '*.tcla.me'
+    certificateArn: 'arn:aws:acm:eu-west-2:758655430746:certificate/45bc97b7-a6c6-41e4-875e-0278c819002a'
     createRoute53Record: true
     endpointType: 'regional'
     securityPolicy: tls_1_2
@@ -74,3 +90,37 @@ package:
     - 'templates/**'
     - 'config/**'
     - 'static/**'
+    - 'hashed_passwords.py'
+
+resources:
+  Resources:
+    JukeboxTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: jukebox-records-${self:provider.stage}
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: status
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+        GlobalSecondaryIndexes:
+          - IndexName: StatusIndex
+            KeySchema:
+              - AttributeName: status
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+    
+    StaticFilesBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: jukebox-static-files-${self:provider.stage}
+        PublicAccessBlockConfiguration:
+          BlockPublicAcls: true
+          BlockPublicPolicy: true
+          IgnorePublicAcls: true
+          RestrictPublicBuckets: true

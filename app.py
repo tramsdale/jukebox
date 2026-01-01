@@ -8,17 +8,25 @@ from werkzeug.security import check_password_hash, generate_password_hash
 import os
 import json
 import secrets
+import uuid
 from werkzeug.utils import secure_filename
 from jukebox_generator import LabelGenerator, DataLoader, JukeBoxLabel
-from models import db, JukeboxRecord, JukeboxStatus
-from flask_migrate import Migrate
+from dynamodb_models import JukeboxRecord, JukeboxStatus
 from pathlib import Path
 import tempfile
-from sqlalchemy import or_, and_
 
 app = Flask(__name__)
-app.secret_key = secrets.token_hex(16)  # Generate random secret key
+# Use SECRET_KEY from environment if available, otherwise generate random key
+app.secret_key = os.environ.get('SECRET_KEY') or secrets.token_hex(16)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+
+# Configure session for Lambda environment
+if 'AWS_LAMBDA_FUNCTION_NAME' in os.environ:
+    # For API Gateway, configure session cookies properly
+    app.config['SESSION_COOKIE_SECURE'] = False  
+    app.config['SESSION_COOKIE_HTTPONLY'] = True
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+    # Remove explicit path setting - let Flask handle it automatically
 
 # Setup Flask-Login
 login_manager = LoginManager()
@@ -26,46 +34,84 @@ login_manager.init_app(app)
 login_manager.login_view = 'login'
 login_manager.login_message = 'Please log in to access this page.'
 
+# Configure Flask-Login for Lambda
+if 'AWS_LAMBDA_FUNCTION_NAME' in os.environ:
+    login_manager.session_protection = "basic"  # Reduce session protection for Lambda
+
 # User class for authentication
 class User(UserMixin):
     def __init__(self, username):
         self.id = username
         self.username = username
+    
+    @property 
+    def is_authenticated(self):
+        return True
+    
+    @property
+    def is_active(self):
+        return True
+    
+    @property
+    def is_anonymous(self):
+        return False
+    
+    def get_id(self):
+        return self.id
 
 # Load users from hashed password file
 try:
     from hashed_passwords import USERS
-except ImportError:
+    if 'AWS_LAMBDA_FUNCTION_NAME' in os.environ:
+        import logging
+        logging.info(f"Loaded {len(USERS)} users from hashed_passwords.py")
+except ImportError as e:
     USERS = {}
+    if 'AWS_LAMBDA_FUNCTION_NAME' in os.environ:
+        import logging
+        logging.error(f"Failed to import hashed_passwords: {e}")
+except Exception as e:
+    USERS = {}
+    if 'AWS_LAMBDA_FUNCTION_NAME' in os.environ:
+        import logging
+        logging.error(f"Error loading users: {e}")
 
 @login_manager.user_loader
 def load_user(user_id):
+    if 'AWS_LAMBDA_FUNCTION_NAME' in os.environ:
+        import logging
+        logging.error(f"=== USER LOADER CALLED ===")
+        logging.error(f"load_user called with user_id: {user_id}")
+        logging.error(f"Users available: {list(USERS.keys())}")
+        logging.error(f"User exists: {user_id in USERS}")
+    
     if user_id in USERS:
-        return User(user_id)
+        user = User(user_id)
+        if 'AWS_LAMBDA_FUNCTION_NAME' in os.environ:
+            logging.error(f"User {user_id} loaded successfully")
+        return user
+    
+    if 'AWS_LAMBDA_FUNCTION_NAME' in os.environ:
+        logging.error(f"User {user_id} not found, returning None")
     return None
 
-# Database configuration
+# DynamoDB configuration
 if 'AWS_LAMBDA_FUNCTION_NAME' in os.environ:
-    # Lambda environment - use environment variable or default to SQLite in /tmp
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
-        'DATABASE_URL', 
-        'sqlite:///tmp/jukebox.db'
+    # Lambda environment - configure for API Gateway stage
+    app.config['APPLICATION_ROOT'] = '/prod'
+
+# Configure URL generation for Lambda environment
+if 'AWS_LAMBDA_FUNCTION_NAME' in os.environ:
+    from werkzeug.middleware.proxy_fix import ProxyFix
+    # Configure proxy fix to handle API Gateway properly
+    app.wsgi_app = ProxyFix(
+        app.wsgi_app,
+        x_proto=1,
+        x_host=1,
+        x_prefix=1,
+        x_for=1,
+        x_port=1
     )
-    # Ensure /tmp directory exists and is writable
-    os.makedirs('/tmp', exist_ok=True)
-else:
-    # Local development
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///jukebox.db')
-
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-    'pool_recycle': 300,
-    'pool_pre_ping': True,
-}
-
-# Initialize database
-db.init_app(app)
-migrate = Migrate(app, db)
 
 # Configure directories for Lambda/local environment
 if 'AWS_LAMBDA_FUNCTION_NAME' in os.environ:
@@ -86,18 +132,70 @@ ALLOWED_EXTENSIONS = {'json', 'csv'}
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+@app.route('/debug-session')
+def debug_session():
+    """Debug route to check session state - only works in Lambda environment"""
+    if 'AWS_LAMBDA_FUNCTION_NAME' not in os.environ:
+        return "Debug route only available in Lambda environment"
+    
+    import logging
+    logging.info("=== SESSION DEBUG ===")
+    logging.info(f"Session data: {dict(session)}")
+    logging.info(f"Current user: {current_user}")
+    logging.info(f"Is authenticated: {current_user.is_authenticated if current_user else 'No current_user'}")
+    logging.info(f"User ID: {current_user.id if current_user and hasattr(current_user, 'id') else 'No ID'}")
+    logging.info(f"Request cookies: {dict(request.cookies)}")
+    logging.info(f"Request path: {request.path}")
+    logging.info(f"Request method: {request.method}")
+    
+    return jsonify({
+        'session': dict(session),
+        'authenticated': current_user.is_authenticated if current_user else False,
+        'user_id': current_user.id if current_user and hasattr(current_user, 'id') else None,
+        'cookies': dict(request.cookies),
+        'path': request.path
+    })
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    if 'AWS_LAMBDA_FUNCTION_NAME' in os.environ:
+        import logging
+        logging.info(f"Login route accessed with method: {request.method}")
+        
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
         
+        # Add debugging for Lambda environment
+        if 'AWS_LAMBDA_FUNCTION_NAME' in os.environ:
+            logging.info(f"Login attempt for user: {username}")
+            logging.info(f"Users available: {list(USERS.keys())}")
+            logging.info(f"Password hash exists: {username in USERS}")
+            logging.info(f"SECRET_KEY configured: {bool(app.secret_key)}")
+        
         if username in USERS and check_password_hash(USERS[username], password):
             user = User(username)
-            login_user(user)
+            login_result = login_user(user, remember=True)  # Add remember=True
+            if 'AWS_LAMBDA_FUNCTION_NAME' in os.environ:
+                logging.info(f"Login successful for {username}: {login_result}")
+                logging.info(f"User authenticated: {user.is_authenticated}")
+                logging.info(f"Session data after login_user: {dict(session)}")
+                # Test if we can load the user immediately
+                test_user = load_user(username)
+                logging.info(f"Test load_user result: {test_user}")
+            
             next_page = request.args.get('next')
-            return redirect(next_page) if next_page else redirect(url_for('index'))
+            redirect_url = next_page if next_page else url_for('index')
+            if 'AWS_LAMBDA_FUNCTION_NAME' in os.environ:
+                logging.info(f"Redirecting to: {redirect_url}")
+            return redirect(redirect_url)
         else:
+            if 'AWS_LAMBDA_FUNCTION_NAME' in os.environ:
+                logging.info(f"Login failed for {username}")
+                if username in USERS:
+                    logging.info("Username exists but password check failed")
+                else:
+                    logging.info("Username not found in USERS")
             flash('Invalid username or password')
     
     return render_template('login.html')
@@ -111,6 +209,12 @@ def logout():
 @app.route('/')
 @login_required
 def index():
+    if 'AWS_LAMBDA_FUNCTION_NAME' in os.environ:
+        import logging
+        logging.info(f"Index route accessed")
+        logging.info(f"Current user authenticated: {current_user.is_authenticated if current_user else 'No current_user'}")
+        logging.info(f"Current user ID: {current_user.id if current_user and hasattr(current_user, 'id') else 'No ID'}")
+        logging.info(f"Session data: {dict(session)}")
     return render_template('index.html')
 
 @app.route('/manual')
@@ -125,53 +229,67 @@ def settings():
     if request.method == 'POST':
         # Save settings to session
         session['label_settings'] = {
-            'width': float(request.form.get('width', 74.0)),
-            'height': float(request.form.get('height', 28.0)),
+            'width': float(request.form.get('width', 76.0)),
+            'height': float(request.form.get('height', 26.0)),
             'genre_box_width_pct': float(request.form.get('genre_box_width_pct', 15.0)),
             'genre_box_height_pct': float(request.form.get('genre_box_height_pct', 12.0)),
             'artist_box_height_pct': float(request.form.get('artist_box_height_pct', 28.0)),
-            'a_side_y_offset': float(request.form.get('a_side_y_offset', 2.0)),
-            'artist_y_offset': float(request.form.get('artist_y_offset', 2.0)),
-            'b_side_y_offset': float(request.form.get('b_side_y_offset', 2.0)),
-            'genre_y_offset': float(request.form.get('genre_y_offset', 2.0)),
+            'a_side_y_offset': float(request.form.get('a_side_y_offset', 0.0)),
+            'artist_y_offset': float(request.form.get('artist_y_offset', 0.0)),
+            'b_side_y_offset': float(request.form.get('b_side_y_offset', 0.0)),
+            'genre_y_offset': float(request.form.get('genre_y_offset', 0.0)),
             'gap_x_mm': float(request.form.get('gap_x_mm', 2.0)),
-            'gap_y_mm': float(request.form.get('gap_y_mm', 2.0))
+            'gap_y_mm': float(request.form.get('gap_y_mm', 2.0)),
+            'main_font_size': float(request.form.get('main_font_size', 12.0)),
+            'genre_font_size': float(request.form.get('genre_font_size', 6.0))
         }
         flash('Settings saved successfully!')
         return redirect(url_for('settings'))
     
     # Get current settings from session or use defaults
-    current_settings = session.get('label_settings', {
-        'width': 74.0,
-        'height': 28.0,
-        'genre_box_width_pct': 15.0,
-        'genre_box_height_pct': 12.0,
-        'artist_box_height_pct': 28.0,
-        'a_side_y_offset': 2.0,
-        'artist_y_offset': 2.0,
-        'b_side_y_offset': 2.0,
-        'genre_y_offset': 2.0,
-        'gap_x_mm': 2.0,
-        'gap_y_mm': 2.0
-    })
+    current_settings = get_label_settings()
     
     return render_template('settings.html', **current_settings, message=request.args.get('message'))
 
 def get_label_settings():
     """Helper function to get current label settings from session or defaults."""
-    return session.get('label_settings', {
-        'width': 74.0,
-        'height': 28.0,
+    defaults = {
+        'width': 76.0,
+        'height': 26.0,
         'genre_box_width_pct': 15.0,
         'genre_box_height_pct': 12.0,
         'artist_box_height_pct': 28.0,
-        'a_side_y_offset': 2.0,
-        'artist_y_offset': 2.0,
-        'b_side_y_offset': 2.0,
-        'genre_y_offset': 2.0,
+        'a_side_y_offset': 0.0,
+        'artist_y_offset': 0.0,
+        'b_side_y_offset': 0.0,
+        'genre_y_offset': 0.0,
         'gap_x_mm': 2.0,
-        'gap_y_mm': 2.0
-    })
+        'gap_y_mm': 2.0,
+        'main_font_size': 12.0,
+        'genre_font_size': 6.0
+    }
+    
+    current_settings = session.get('label_settings', {})
+    
+    # Migrate old sessions to new defaults
+    needs_update = False
+    for key, new_default in defaults.items():
+        if key not in current_settings:
+            current_settings[key] = new_default
+            needs_update = True
+        elif key in ['main_font_size'] and current_settings[key] == 14.0:
+            # Migrate old font size default
+            current_settings[key] = 12.0
+            needs_update = True
+        elif key.endswith('_offset') and current_settings[key] == 2.0:
+            # Migrate old offset defaults
+            current_settings[key] = 0.0
+            needs_update = True
+    
+    if needs_update:
+        session['label_settings'] = current_settings
+    
+    return current_settings
 
 @app.route('/generate', methods=['POST'])
 @login_required
@@ -192,6 +310,8 @@ def generate_pdf():
         genre_y_offset = float(request.form.get('genre_y_offset', settings['genre_y_offset']))
         gap_x_mm = float(request.form.get('gap_x_mm', settings['gap_x_mm']))
         gap_y_mm = float(request.form.get('gap_y_mm', settings['gap_y_mm']))
+        main_font_size = float(request.form.get('main_font_size', settings['main_font_size']))
+        genre_font_size = float(request.form.get('genre_font_size', settings['genre_font_size']))
         
         labels = []
         
@@ -257,30 +377,77 @@ def generate_pdf():
             b_side_y_offset=b_side_y_offset,
             genre_y_offset=genre_y_offset,
             gap_x_mm=gap_x_mm,
-            gap_y_mm=gap_y_mm
+            gap_y_mm=gap_y_mm,
+            main_font_size=main_font_size,
+            genre_font_size=genre_font_size
         )
         
-        # Create temporary file for PDF
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
-            output_path = generator.generate_pdf(labels, tmp_file.name)
+        # Create temporary file for PDF with explicit directory
+        import uuid
+        temp_filename = f'jukebox_labels_{uuid.uuid4().hex[:8]}.pdf'
+        if 'AWS_LAMBDA_FUNCTION_NAME' in os.environ:
+            temp_path = f'/tmp/{temp_filename}'
+        else:
+            temp_path = os.path.join(OUTPUT_FOLDER, temp_filename)
+        
+        try:
+            output_path = generator.generate_pdf(labels, temp_path)
             
             return send_file(
                 output_path,
-                as_attachment=False,
+                as_attachment=True,
                 download_name='jukebox_labels.pdf',
                 mimetype='application/pdf'
             )
+        except Exception as e:
+            # Clean up on error
+            try:
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+            except:
+                pass
+            raise
     
     except Exception as e:
         flash(f'Error generating PDF: {str(e)}')
         return redirect(url_for('index'))
 
+@app.route('/test-logging')
+def test_logging():
+    """Test route to verify logging works"""
+    if 'AWS_LAMBDA_FUNCTION_NAME' in os.environ:
+        import logging
+        logging.error("=== TEST LOGGING ROUTE CALLED ===")
+        logging.error("This is a test error message")
+        return "Test logging complete - check logs"
+    else:
+        return "Test route - only works in Lambda"
+
 @app.route('/sample')
 @login_required
 def generate_sample():
+    # Force error logging to make sure we see this
+    import logging
+    logging.error("=== SAMPLE PDF ROUTE CALLED ===")
+    logging.error(f"Request method: {request.method}")
+    logging.error(f"Request path: {request.path}")
+    logging.error(f"Full URL: {request.url}")
+    logging.error(f"Current user authenticated: {current_user.is_authenticated}")
+    logging.error(f"Current user: {current_user}")
+    logging.error(f"Session data: {dict(session)}")
+    logging.error(f"Session _user_id: {session.get('_user_id')}")
+    
     try:
+        # Add logging to track route access
+        if 'AWS_LAMBDA_FUNCTION_NAME' in os.environ:
+            logging.error("Lambda environment detected in sample route")
+            logging.error("Getting label settings...")
+        
         # Get settings from session or query params
         settings = get_label_settings()
+        
+        if 'AWS_LAMBDA_FUNCTION_NAME' in os.environ:
+            logging.error(f"Settings retrieved: {settings}")
         
         # Override with query params if provided
         width = float(request.args.get('width', settings['width']))
@@ -294,6 +461,11 @@ def generate_sample():
         genre_y_offset = float(request.args.get('genre_y_offset', settings['genre_y_offset']))
         gap_x_mm = float(request.args.get('gap_x_mm', settings['gap_x_mm']))
         gap_y_mm = float(request.args.get('gap_y_mm', settings['gap_y_mm']))
+        main_font_size = float(request.args.get('main_font_size', settings['main_font_size']))
+        genre_font_size = float(request.args.get('genre_font_size', settings['genre_font_size']))
+        
+        if 'AWS_LAMBDA_FUNCTION_NAME' in os.environ:
+            logging.error("Creating sample data...")
         
         # Create sample data
         sample_labels = [
@@ -304,6 +476,10 @@ def generate_sample():
             JukeBoxLabel("B.B. King", "The Thrill Is Gone", "Sweet Little Angel", "Blues"),
             JukeBoxLabel("Daft Punk", "Around the World", "Da Funk", "Electronic"),
         ]
+        
+        if 'AWS_LAMBDA_FUNCTION_NAME' in os.environ:
+            logging.error(f"Created {len(sample_labels)} sample labels")
+            logging.error("Initializing LabelGenerator...")
         
         # Generate PDF
         generator = LabelGenerator(
@@ -318,70 +494,144 @@ def generate_sample():
             b_side_y_offset=b_side_y_offset,
             genre_y_offset=genre_y_offset,
             gap_x_mm=gap_x_mm,
-            gap_y_mm=gap_y_mm
+            gap_y_mm=gap_y_mm,
+            main_font_size=main_font_size,
+            genre_font_size=genre_font_size
         )
         
-        # Create temporary file for PDF
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
-            output_path = generator.generate_pdf(sample_labels, tmp_file.name)
+        if 'AWS_LAMBDA_FUNCTION_NAME' in os.environ:
+            logging.error("LabelGenerator initialized successfully")
+            logging.error(f"Output folder: {OUTPUT_FOLDER}")
+        
+        if 'AWS_LAMBDA_FUNCTION_NAME' in os.environ:
+            logging.error("Creating temporary filename...")
+        
+        # Create temporary file for PDF with explicit directory
+        import uuid
+        temp_filename = f'sample_jukebox_labels_{uuid.uuid4().hex[:8]}.pdf'
+        if 'AWS_LAMBDA_FUNCTION_NAME' in os.environ:
+            temp_path = f'/tmp/{temp_filename}'
+            import logging
+            logging.error(f"Lambda environment: Creating PDF at {temp_path}")
+        else:
+            temp_path = os.path.join(OUTPUT_FOLDER, temp_filename)
+        
+        if 'AWS_LAMBDA_FUNCTION_NAME' in os.environ:
+            logging.error("Starting PDF generation try block...")
+        
+        try:
+            if 'AWS_LAMBDA_FUNCTION_NAME' in os.environ:
+                logging.error(f"Generating PDF with {len(sample_labels)} labels")
+                logging.error(f"Generator output dir: {OUTPUT_FOLDER}")
+                logging.error(f"Temp path: {temp_path}")
+                logging.error("About to call generator.generate_pdf()...")
+                
+            output_path = generator.generate_pdf(sample_labels, temp_path)
             
+            if 'AWS_LAMBDA_FUNCTION_NAME' in os.environ:
+                logging.error("generator.generate_pdf() completed successfully!")
+                logging.error(f"PDF generated successfully at {output_path}")
+                logging.error(f"File exists: {os.path.exists(output_path)}")
+                if os.path.exists(output_path):
+                    file_size = os.path.getsize(output_path)
+                    logging.error(f"File size: {file_size} bytes")
+                    
+                    # Check if it's actually a PDF by reading first few bytes
+                    try:
+                        with open(output_path, 'rb') as f:
+                            first_bytes = f.read(20)
+                            logging.error(f"First 20 bytes: {first_bytes}")
+                            is_pdf = first_bytes.startswith(b'%PDF')
+                            logging.error(f"Starts with PDF header: {is_pdf}")
+                    except Exception as read_error:
+                        logging.error(f"Error reading generated file: {read_error}")
+                else:
+                    logging.error("Generated file does not exist!")
+                    
+            logging.error("About to serve file...")
+            
+            # Try using send_file directly - let serverless-wsgi handle everything
             return send_file(
                 output_path,
-                as_attachment=False,
+                as_attachment=True,
                 download_name='sample_jukebox_labels.pdf',
                 mimetype='application/pdf'
             )
+        except Exception as pdf_error:
+            if 'AWS_LAMBDA_FUNCTION_NAME' in os.environ:
+                logging.error(f"PDF generation error: {pdf_error}")
+                import traceback
+                logging.error(f"PDF generation traceback: {traceback.format_exc()}")
+            # Clean up on error
+            try:
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+            except:
+                pass
+            raise
     
     except Exception as e:
         flash(f'Error generating sample PDF: {str(e)}')
         return redirect(url_for('index'))
 
-# Database management routes
 @app.route('/database')
 @login_required
 def database():
     """Show database records with filtering and sorting."""
-    # Get filter and sort parameters
-    status_filter = request.args.get('status', '')
-    search_query = request.args.get('search', '')
-    sort_by = request.args.get('sort', 'id')
-    sort_order = request.args.get('order', 'asc')
-    
-    # Build query
-    query = JukeboxRecord.query
-    
-    # Apply status filter
-    if status_filter:
-        query = query.filter(JukeboxRecord.status == JukeboxStatus(status_filter))
-    
-    # Apply search filter
-    if search_query:
-        search_term = f'%{search_query}%'
-        query = query.filter(or_(
-            JukeboxRecord.track_a_side.ilike(search_term),
-            JukeboxRecord.track_b_side.ilike(search_term),
-            JukeboxRecord.artist_a_side.ilike(search_term),
-            JukeboxRecord.artist_b_side.ilike(search_term),
-            JukeboxRecord.jukebox_id.ilike(search_term)
-        ))
-    
-    # Apply sorting
-    if hasattr(JukeboxRecord, sort_by):
-        column = getattr(JukeboxRecord, sort_by)
-        if sort_order == 'desc':
-            query = query.order_by(column.desc())
+    try:
+        if 'AWS_LAMBDA_FUNCTION_NAME' in os.environ:
+            import logging
+            logging.info("Database route accessed in Lambda environment")
+        
+        # Get filter and sort parameters
+        status_filter = request.args.get('status', '')
+        search_query = request.args.get('search', '')
+        sort_by = request.args.get('sort', 'id')
+        sort_order = request.args.get('order', 'asc')
+        
+        # Get records from DynamoDB
+        records = JukeboxRecord.scan_all(
+            status_filter=status_filter if status_filter else None,
+            search_query=search_query if search_query else None
+        )
+        
+        # Sort records (DynamoDB doesn't support all sorting options)
+        if sort_by == 'id':
+            records.sort(key=lambda x: x.id, reverse=(sort_order == 'desc'))
+        elif sort_by == 'track_a_side':
+            records.sort(key=lambda x: x.track_a_side.lower(), reverse=(sort_order == 'desc'))
+        elif sort_by == 'artist_a_side':
+            records.sort(key=lambda x: x.artist_a_side.lower(), reverse=(sort_order == 'desc'))
+        elif sort_by == 'status':
+            records.sort(key=lambda x: x.status.value, reverse=(sort_order == 'desc'))
+        elif sort_by == 'jukebox_id':
+            records.sort(key=lambda x: x.jukebox_id or '', reverse=(sort_order == 'desc'))
+        
+        if 'AWS_LAMBDA_FUNCTION_NAME' in os.environ:
+            logging.info(f"Retrieved {len(records)} records from DynamoDB")
+        
+        return render_template('database.html', 
+                             records=records,
+                             statuses=JukeboxStatus,
+                             current_status=status_filter,
+                             current_search=search_query,
+                             current_sort=sort_by,
+                             current_order=sort_order)
+                             
+    except Exception as e:
+        if 'AWS_LAMBDA_FUNCTION_NAME' in os.environ:
+            import logging
+            logging.error(f"Database route error: {e}")
+            logging.error(f"Error type: {type(e)}")
+            import traceback
+            logging.error(f"Full traceback: {traceback.format_exc()}")
+        
+        # Return JSON error for debugging in Lambda
+        if 'AWS_LAMBDA_FUNCTION_NAME' in os.environ:
+            return jsonify({'error': str(e), 'type': str(type(e))})
         else:
-            query = query.order_by(column.asc())
-    
-    records = query.all()
-    
-    return render_template('database.html', 
-                         records=records,
-                         statuses=JukeboxStatus,
-                         current_status=status_filter,
-                         current_search=search_query,
-                         current_sort=sort_by,
-                         current_order=sort_order)
+            flash(f'Error accessing database: {str(e)}')
+            return redirect(url_for('index'))
 
 @app.route('/database/add', methods=['GET', 'POST'])
 @login_required
@@ -398,8 +648,7 @@ def add_record():
                 status=JukeboxStatus(request.form['status']),
                 jukebox_id=request.form['jukebox_id'] if request.form['jukebox_id'] else None
             )
-            db.session.add(record)
-            db.session.commit()
+            record.save()
             flash('Record added successfully!')
             return redirect(url_for('database'))
         except Exception as e:
@@ -407,11 +656,14 @@ def add_record():
     
     return render_template('add_record.html', statuses=JukeboxStatus)
 
-@app.route('/database/edit/<int:record_id>', methods=['GET', 'POST'])
+@app.route('/database/edit/<record_id>', methods=['GET', 'POST'])
 @login_required
 def edit_record(record_id):
     """Edit an existing jukebox record."""
-    record = JukeboxRecord.query.get_or_404(record_id)
+    record = JukeboxRecord.get_by_id(record_id)
+    if not record:
+        flash('Record not found')
+        return redirect(url_for('database'))
     
     if request.method == 'POST':
         try:
@@ -423,7 +675,7 @@ def edit_record(record_id):
             record.status = JukeboxStatus(request.form['status'])
             record.jukebox_id = request.form['jukebox_id'] if request.form['jukebox_id'] else None
             
-            db.session.commit()
+            record.save()
             flash('Record updated successfully!')
             return redirect(url_for('database'))
         except Exception as e:
@@ -431,15 +683,17 @@ def edit_record(record_id):
     
     return render_template('edit_record.html', record=record, statuses=JukeboxStatus)
 
-@app.route('/database/delete/<int:record_id>', methods=['POST'])
+@app.route('/database/delete/<record_id>', methods=['POST'])
 @login_required
 def delete_record(record_id):
     """Delete a jukebox record."""
     try:
-        record = JukeboxRecord.query.get_or_404(record_id)
-        db.session.delete(record)
-        db.session.commit()
-        flash('Record deleted successfully!')
+        record = JukeboxRecord.get_by_id(record_id)
+        if record:
+            record.delete()
+            flash('Record deleted successfully!')
+        else:
+            flash('Record not found')
     except Exception as e:
         flash(f'Error deleting record: {str(e)}')
     
@@ -459,7 +713,7 @@ def print_selected():
         settings = get_label_settings()
         
         # Get selected records and convert to labels
-        records = JukeboxRecord.query.filter(JukeboxRecord.id.in_(record_ids)).all()
+        records = JukeboxRecord.get_by_ids(record_ids)
         labels = []
         
         for record in records:
@@ -479,19 +733,36 @@ def print_selected():
             b_side_y_offset=settings['b_side_y_offset'],
             genre_y_offset=settings['genre_y_offset'],
             gap_x_mm=settings['gap_x_mm'],
-            gap_y_mm=settings['gap_y_mm']
+            gap_y_mm=settings['gap_y_mm'],
+            main_font_size=settings['main_font_size'],
+            genre_font_size=settings['genre_font_size']
         )
         
-        # Create temporary file for PDF
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
-            output_path = generator.generate_pdf(labels, tmp_file.name)
+        # Create temporary file for PDF with explicit directory
+        import uuid
+        temp_filename = f'selected_jukebox_labels_{uuid.uuid4().hex[:8]}.pdf'
+        if 'AWS_LAMBDA_FUNCTION_NAME' in os.environ:
+            temp_path = f'/tmp/{temp_filename}'
+        else:
+            temp_path = os.path.join(OUTPUT_FOLDER, temp_filename)
+        
+        try:
+            output_path = generator.generate_pdf(labels, temp_path)
             
             return send_file(
                 output_path,
-                as_attachment=False,
+                as_attachment=True,
                 download_name='selected_jukebox_labels.pdf',
                 mimetype='application/pdf'
             )
+        except Exception as e:
+            # Clean up on error
+            try:
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+            except:
+                pass
+            raise
     
     except Exception as e:
         flash(f'Error generating PDF: {str(e)}')
@@ -501,7 +772,7 @@ def print_selected():
 @login_required
 def api_records():
     """API endpoint for getting records as JSON."""
-    records = JukeboxRecord.query.all()
+    records = JukeboxRecord.scan_all()
     return jsonify([record.to_dict() for record in records])
 
 @app.route('/database/import', methods=['GET', 'POST'])
@@ -552,10 +823,15 @@ def import_csv():
                         jukebox_id = str(int(jukebox_id_raw)).zfill(3)
                     
                     # Check if record already exists (by artist A side and track A side)
-                    existing = JukeboxRecord.query.filter(
-                        JukeboxRecord.artist_a_side == row['Artist A side'].strip(),
-                        JukeboxRecord.track_a_side == row['Track A side'].strip()
-                    ).first()
+                    artist_a = row['Artist A side'].strip()
+                    track_a = row['Track A side'].strip()
+                    
+                    # Simple duplicate check - scan existing records
+                    existing_records = JukeboxRecord.scan_all()
+                    existing = any(
+                        r.artist_a_side == artist_a and r.track_a_side == track_a
+                        for r in existing_records
+                    )
                     
                     if existing:
                         skipped_count += 1
@@ -563,19 +839,17 @@ def import_csv():
                     
                     # Create new record
                     record = JukeboxRecord(
-                        track_a_side=row['Track A side'].strip(),
+                        track_a_side=track_a,
                         track_b_side=row.get('Track B side', '').strip() or 'Unknown',
-                        artist_a_side=row['Artist A side'].strip(),
-                        artist_b_side=row.get('Artist B side', '').strip() or row['Artist A side'].strip(),
+                        artist_a_side=artist_a,
+                        artist_b_side=row.get('Artist B side', '').strip() or artist_a,
                         genre=row.get('Genre', '').strip() or None,
                         status=status,
                         jukebox_id=jukebox_id
                     )
                     
-                    db.session.add(record)
+                    record.save()
                     imported_count += 1
-                
-                db.session.commit()
                 flash(f'Successfully imported {imported_count} records. {skipped_count} records were skipped.')
                 return redirect(url_for('database'))
                 
@@ -587,6 +861,4 @@ def import_csv():
     return render_template('import_csv.html')
 
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
     app.run(debug=True)

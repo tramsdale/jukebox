@@ -1,4 +1,13 @@
-# AWS Lambda Deployment Guide
+# AWS Lambda Deployment Guide - Production with S3 Database
+
+## Overview
+
+This production deployment uses S3-backed SQLite database storage, providing:
+- ✅ **Persistent data storage** across Lambda cold starts
+- ✅ **Automatic database synchronization** after write operations  
+- ✅ **Database versioning** with S3 versioning enabled
+- ✅ **Cost-effective storage** compared to RDS
+- ✅ **Zero-maintenance** database infrastructure
 
 ## Prerequisites
 
@@ -6,47 +15,112 @@
 2. **Node.js** installed for Serverless Framework
 3. **Domain certificate** for `*.tcla.me` in AWS Certificate Manager
 4. **Route53 hosted zone** for `tcla.me` domain
+5. **S3 permissions** for database storage
 
 ## Quick Deploy
 
 ```bash
-# Run the deployment script
+# 1. Set up production database in S3
+./setup_production_db.py
+
+# 2. Deploy to Lambda
 ./deploy.sh
 ```
 
 ## Manual Deployment Steps
 
-### 1. Install Dependencies
+### 1. Initialize Production Database
+```bash
+python setup_production_db.py
+```
+
+This script will:
+- Create S3 bucket with versioning and security
+- Import your existing CSV data (if available)
+- Upload initial database to S3
+- Configure proper permissions
+
+### 2. Install Dependencies
 ```bash
 npm install
 ```
 
-### 2. Set Environment Variables
+### 3. Set Environment Variables
 ```bash
 export SECRET_KEY=$(python -c "import secrets; print(secrets.token_hex(16))")
-export DATABASE_URL="sqlite:///tmp/jukebox.db"  # Or your RDS URL
+export S3_BUCKET="jukebox-database-storage-prod"
+export DB_S3_KEY="database/jukebox.db"
 ```
 
-### 3. Deploy to AWS
+### 4. Deploy to AWS
 ```bash
 serverless deploy --stage prod
 ```
 
-## Database Considerations
+## Database Architecture
 
-### Option 1: SQLite (Current - Limited)
-- Uses `/tmp` directory in Lambda
-- **Limitation**: Data is lost between cold starts
-- Good for: Testing, temporary storage
+### S3-Backed SQLite
+- **Storage**: SQLite database stored in S3
+- **Sync Strategy**: 
+  - Downloads database from S3 on Lambda startup
+  - Uploads changes back to S3 after write operations
+- **Concurrency**: Single-writer model (suitable for typical usage)
+- **Backup**: S3 versioning provides automatic backups
 
-### Option 2: RDS (Recommended for Production)
+### Database Flow
+1. **Lambda Cold Start**: Downloads `jukebox.db` from S3 to `/tmp/`
+2. **Read Operations**: Direct SQLite queries on local file
+3. **Write Operations**: SQLite write + automatic S3 upload
+4. **Lambda Termination**: Changes already saved to S3
+
+## Production Features
+
+### Automatic Database Sync
+- Middleware monitors HTTP methods (POST, PUT, DELETE)
+- Successful write operations trigger S3 upload
+- Failed uploads are logged but don't break the app
+
+### S3 Bucket Configuration
+- **Versioning**: Enabled for data protection
+- **Encryption**: AES-256 server-side encryption
+- **Access**: Private with IAM role permissions only
+- **Structure**: `s3://jukebox-database-storage-prod/database/jukebox.db`
+
+### Error Handling
+- Database download failures create new database
+- Upload failures are logged but don't block requests  
+- Connection pooling for reliability
+- Graceful degradation
+
+## Monitoring and Maintenance
+
+### CloudWatch Logs
 ```bash
-export DATABASE_URL="mysql://username:password@rds-endpoint:3306/jukebox"
+# View Lambda logs
+serverless logs -f app --tail
+
+# Check database sync operations
+aws logs filter-log-events --log-group-name /aws/lambda/jukebox-app-prod-app --filter-pattern "database"
 ```
 
-### Option 3: DynamoDB (Serverless Native)
-- Would require code changes to use DynamoDB instead of SQLAlchemy
-- Fully serverless and scales automatically
+### Database Backup
+S3 versioning provides automatic point-in-time backups:
+```bash
+# List database versions
+aws s3api list-object-versions --bucket jukebox-database-storage-prod --prefix database/jukebox.db
+
+# Restore specific version
+aws s3api copy-object --copy-source "jukebox-database-storage-prod/database/jukebox.db?versionId=VERSION_ID" --bucket jukebox-database-storage-prod --key database/jukebox.db
+```
+
+### Manual Database Operations
+```bash
+# Download current database
+aws s3 cp s3://jukebox-database-storage-prod/database/jukebox.db ./
+
+# Upload updated database
+aws s3 cp ./jukebox.db s3://jukebox-database-storage-prod/database/jukebox.db
+```
 
 ## Static Files
 

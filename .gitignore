@@ -143,3 +143,4 @@ user_passwords.txt
 secrets.txt
 *.key
 *.pem
+node_modules

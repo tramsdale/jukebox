@@ -240,6 +240,22 @@
             </div>
             
             <div class="form-section">
+                <h3>Font Settings</h3>
+                
+                <div class="form-group">
+                    <label for="main_font_size">Main Text Font Size (pt):</label>
+                    <input type="number" id="main_font_size" name="main_font_size" step="0.5" min="6" max="24" value="{{ main_font_size }}" required>
+                    <div class="help-text">Font size for artist, A-side, and B-side text</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="genre_font_size">Genre Font Size (pt):</label>
+                    <input type="number" id="genre_font_size" name="genre_font_size" step="0.5" min="4" max="12" value="{{ genre_font_size }}" required>
+                    <div class="help-text">Font size for genre text in the side boxes</div>
+                </div>
+            </div>
+            
+            <div class="form-section">
                 <h3>Preview</h3>
                 
                 <div style="background: white; border: 2px solid #ddd; padding: 10px; margin: 10px 0; display: inline-block;">
@@ -263,17 +279,19 @@
     <script>
         function resetDefaults() {
             if (confirm('Are you sure you want to reset all settings to default values?')) {
-                document.getElementById('width').value = '74.0';
-                document.getElementById('height').value = '28.0';
+                document.getElementById('width').value = '76.0';
+                document.getElementById('height').value = '26.0';
                 document.getElementById('genre_box_width_pct').value = '15.0';
                 document.getElementById('genre_box_height_pct').value = '12.0';
                 document.getElementById('artist_box_height_pct').value = '28.0';
-                document.getElementById('a_side_y_offset').value = '2.0';
-                document.getElementById('artist_y_offset').value = '2.0';
-                document.getElementById('b_side_y_offset').value = '2.0';
-                document.getElementById('genre_y_offset').value = '2.0';
+                document.getElementById('a_side_y_offset').value = '0.0';
+                document.getElementById('artist_y_offset').value = '0.0';
+                document.getElementById('b_side_y_offset').value = '0.0';
+                document.getElementById('genre_y_offset').value = '0.0';
                 document.getElementById('gap_x_mm').value = '2.0';
                 document.getElementById('gap_y_mm').value = '2.0';
+                document.getElementById('main_font_size').value = '12.0';
+                document.getElementById('genre_font_size').value = '6.0';
             }
         }
         

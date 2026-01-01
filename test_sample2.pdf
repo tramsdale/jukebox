@@ -125,15 +125,11 @@
             <p>Please log in to continue</p>
         </div>
         
-        {% with messages = get_flashed_messages() %}
-            {% if messages %}
-                {% for message in messages %}
-                    <div class="alert">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
         
-        <form method="POST" action="{{ url_for('login') }}">
+            
+        
+        
+        <form method="POST" action="/login">
             <div class="form-group">
                 <label for="username">Username:</label>
                 <input type="text" id="username" name="username" required>

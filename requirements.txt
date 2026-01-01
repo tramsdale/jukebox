@@ -1,6 +1,6 @@
 # Lambda-specific requirements
-awslambda-wsgi==0.2.0
-mangum==0.17.0
+serverless-wsgi>=0.2.0
+boto3>=1.34.0
 
 # Core application dependencies (from pyproject.toml)
 flask>=3.0.0

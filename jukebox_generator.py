@@ -24,8 +24,9 @@ class LabelFlowable(Flowable):
     
     def __init__(self, label: 'JukeBoxLabel', width, height, genre_config, 
                  genre_box_width_pct=0.1, genre_box_height_pct=0.33, 
-                 artist_box_height_pct=0.33, a_side_y_offset=2, artist_y_offset=2, 
-                 b_side_y_offset=2, genre_y_offset=2):
+                 artist_box_height_pct=0.33, a_side_y_offset=0, artist_y_offset=0, 
+                 b_side_y_offset=0, genre_y_offset=0, main_font_size=12, 
+                 genre_font_size=6):
         self.label = label
         self.width = width
         self.height = height
@@ -37,6 +38,8 @@ class LabelFlowable(Flowable):
         self.artist_y_offset = artist_y_offset
         self.b_side_y_offset = b_side_y_offset
         self.genre_y_offset = genre_y_offset
+        self.main_font_size = main_font_size
+        self.genre_font_size = genre_font_size
     
     def _hex_to_color(self, hex_color: str):
         """Convert hex color string to ReportLab Color object."""
@@ -93,7 +96,7 @@ class LabelFlowable(Flowable):
         
         # Draw background
         canvas.setFillColor(bg_color)
-        canvas.setStrokeColor(colors.black)
+        canvas.setStrokeColor(genre_color)  # Set border color to match genre
         canvas.setLineWidth(1)
         canvas.rect(0, 0, w, h, fill=1, stroke=1)
         
@@ -117,12 +120,14 @@ class LabelFlowable(Flowable):
         artist_banner_x = tab_width
         artist_banner_width = w - (2 * tab_width)
         
-        # Draw white artist banner
+        # Draw white artist banner with genre color border
         canvas.setFillColor(colors.white)
+        canvas.setStrokeColor(genre_color)  # Set border color to match genre
         canvas.rect(artist_banner_x, artist_box_y, artist_banner_width, artist_box_height, fill=1, stroke=1)
         
-        # Draw genre tabs with genre-specific color
+        # Draw genre tabs with genre-specific color and matching border
         canvas.setFillColor(genre_color)
+        canvas.setStrokeColor(genre_color)  # Set border color to match genre
         canvas.rect(0, genre_box_y, tab_width, genre_box_height, fill=1, stroke=1)  # Left
         canvas.rect(w - tab_width, genre_box_y, tab_width, genre_box_height, fill=1, stroke=1)  # Right
         
@@ -130,38 +135,38 @@ class LabelFlowable(Flowable):
         canvas.setFillColor(colors.black)
         
         # A-side (top section, centered)
-        canvas.setFont("Helvetica-Bold", 9)
+        canvas.setFont("Helvetica-Bold", self.main_font_size)
         a_text = self.label.a_side
-        a_width = canvas.stringWidth(a_text, "Helvetica-Bold", 9)
+        a_width = canvas.stringWidth(a_text, "Helvetica-Bold", self.main_font_size)
         # Center vertically in the A-side section, with optional offset
-        a_side_text_y = a_side_y + (a_side_height / 2) - 4 + self.a_side_y_offset  # -4 adjusts for font height
+        a_side_text_y = a_side_y + (a_side_height / 2) - (self.main_font_size/3) + self.a_side_y_offset
         canvas.drawString(w/2 - a_width/2, a_side_text_y, a_text)
         
         # Artist (middle banner, centered)
-        canvas.setFont("Helvetica-Bold", 8)
+        canvas.setFont("Helvetica-Bold", self.main_font_size)
         artist_text = self.label.get_display_artist()
-        artist_width = canvas.stringWidth(artist_text, "Helvetica-Bold", 8)
+        artist_width = canvas.stringWidth(artist_text, "Helvetica-Bold", self.main_font_size)
         # Center vertically in the artist box, with optional offset
-        artist_text_y = artist_box_y + (artist_box_height / 2) - 4 + self.artist_y_offset  # -4 adjusts for font height
+        artist_text_y = artist_box_y + (artist_box_height / 2) - (self.main_font_size/3) + self.artist_y_offset
         canvas.drawString(w/2 - artist_width/2, artist_text_y, artist_text)
         
         # B-side (bottom section, centered)
-        canvas.setFont("Helvetica-Bold", 9)
+        canvas.setFont("Helvetica-Bold", self.main_font_size)
         b_text = self.label.b_side
-        b_width = canvas.stringWidth(b_text, "Helvetica-Bold", 9)
+        b_width = canvas.stringWidth(b_text, "Helvetica-Bold", self.main_font_size)
         # Center vertically in the B-side section, with optional offset
-        b_side_text_y = b_side_y + (b_side_height / 2) - 4 + self.b_side_y_offset  # -4 adjusts for font height
+        b_side_text_y = b_side_y + (b_side_height / 2) - (self.main_font_size/3) + self.b_side_y_offset
         canvas.drawString(w/2 - b_width/2, b_side_text_y, b_text)
         
         # Genre in tabs with genre-specific text color
         genre_text_color = self._hex_to_color(genre_config['text_color'])
         canvas.setFillColor(genre_text_color)
-        canvas.setFont("Helvetica-Bold", 6)
+        canvas.setFont("Helvetica-Bold", self.genre_font_size)
         genre = self._format_genre_text(self.label.genre)
-        g_width = canvas.stringWidth(genre, "Helvetica-Bold", 6)
+        g_width = canvas.stringWidth(genre, "Helvetica-Bold", self.genre_font_size)
         
         # Center vertically in the genre tabs, with optional offset
-        genre_text_y = genre_box_y + (genre_box_height / 2) - 4 + self.genre_y_offset  # -3 adjusts for font height
+        genre_text_y = genre_box_y + (genre_box_height / 2) - (self.genre_font_size/3) + self.genre_y_offset
         # Left tab
         canvas.drawString(tab_width/2 - g_width/2, genre_text_y, genre)
         # Right tab  
@@ -242,9 +247,10 @@ class LabelGenerator:
     
     def __init__(self, output_dir: str = "output", label_width_mm: float = 74.0, label_height_mm: float = 28.0,
                  genre_box_width_pct: float = 15.0, genre_box_height_pct: float = 12.0,
-                 artist_box_height_pct: float = 28.0, a_side_y_offset: float = 2,
-                 artist_y_offset: float = 2, b_side_y_offset: float = 2, 
-                 genre_y_offset: float = 2, gap_x_mm: float = 2.0, gap_y_mm: float = 2.0):
+                 artist_box_height_pct: float = 28.0, a_side_y_offset: float = 0,
+                 artist_y_offset: float = 0, b_side_y_offset: float = 0, 
+                 genre_y_offset: float = 0, gap_x_mm: float = 2.0, gap_y_mm: float = 2.0,
+                 main_font_size: float = 12.0, genre_font_size: float = 6.0):
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(exist_ok=True)
         self.genre_config = GenreConfig()
@@ -265,6 +271,8 @@ class LabelGenerator:
         self.genre_y_offset = genre_y_offset
         self.gap_x_mm = gap_x_mm
         self.gap_y_mm = gap_y_mm
+        self.main_font_size = main_font_size
+        self.genre_font_size = genre_font_size
     
     def generate_pdf(self, labels: List[JukeBoxLabel], filename: str = "jukebox_labels.pdf") -> str:
         """Generate PDF file containing all labels.
@@ -383,7 +391,9 @@ class LabelGenerator:
             a_side_y_offset=self.a_side_y_offset,
             artist_y_offset=self.artist_y_offset,
             b_side_y_offset=self.b_side_y_offset,
-            genre_y_offset=self.genre_y_offset
+            genre_y_offset=self.genre_y_offset,
+            main_font_size=self.main_font_size,
+            genre_font_size=self.genre_font_size
         )
     
     def _get_table_style(self, labels: List[JukeBoxLabel], labels_per_row: int) -> TableStyle:
