@@ -1,0 +1,37 @@
+genres:
+  rock:
+    background_color: '#FF6B6B'  # Coral red
+    text_color: '#FFFFFF'
+  pop:
+    background_color: '#4ECDC4'  # Turquoise
+    text_color: '#FFFFFF'
+  jazz:
+    background_color: '#45B7D1'  # Blue
+    text_color: '#FFFFFF'
+  classical:
+    background_color: '#96CEB4'  # Light green
+    text_color: '#2C3E50'
+  blues:
+    background_color: '#6C5CE7'  # Purple
+    text_color: '#FFFFFF'
+  country:
+    background_color: '#FDCB6E'  # Yellow
+    text_color: '#2D3436'
+  electronic:
+    background_color: '#A29BFE'  # Light purple
+    text_color: '#FFFFFF'
+  reggae:
+    background_color: '#00B894'  # Green
+    text_color: '#FFFFFF'
+  soul:
+    background_color: '#E17055'  # Orange
+    text_color: '#FFFFFF'
+  hip-hop:
+    background_color: '#2D3436'  # Dark gray
+    text_color: '#FFFFFF'
+  funk:
+    background_color: '#FD79A8'  # Pink
+    text_color: '#FFFFFF'
+  default:
+    background_color: '#DDD'     # Light gray
+    text_color: '#333'

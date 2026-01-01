@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Juke Box Label Generator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #d32f2f;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+        }
+        .section h2 {
+            color: #333;
+            margin-top: 0;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="text"], input[type="number"], input[type="file"], select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .dimension-group {
+            display: flex;
+            gap: 15px;
+        }
+        .dimension-group .form-group {
+            flex: 1;
+        }
+        .btn {
+            background-color: #d32f2f;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        .btn:hover {
+            background-color: #b71c1c;
+        }
+        .btn-secondary {
+            background-color: #666;
+        }
+        .btn-secondary:hover {
+            background-color: #555;
+        }
+        .alert {
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 1px solid transparent;
+            border-radius: 4px;
+        }
+        .alert-error {
+            color: #721c24;
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+        }
+        .nav-links {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .nav-links a {
+            color: #d32f2f;
+            text-decoration: none;
+            margin: 0 15px;
+            font-weight: bold;
+        }
+        .nav-links a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎵 Juke Box Label Generator</h1>
+        
+        <div class="nav-links">
+            <a href="/">File Upload</a>
+            <a href="/manual">Manual Entry</a>
+        </div>
+        
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-error">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        <div class="section">
+            <h2>Label Dimensions</h2>
+            <form id="dimensionsForm">
+                <div class="dimension-group">
+                    <div class="form-group">
+                        <label for="width">Width (mm):</label>
+                        <input type="number" id="width" name="width" value="74.0" step="0.1" min="10" max="200">
+                    </div>
+                    <div class="form-group">
+                        <label for="height">Height (mm):</label>
+                        <input type="number" id="height" name="height" value="28.0" step="0.1" min="10" max="100">
+                    </div>
+                </div>
+                
+                <h3>Layout Configuration</h3>
+                <div class="dimension-group">
+                    <div class="form-group">
+                        <label for="genre_box_width_pct">Genre Box Width (%):</label>
+                        <input type="number" id="genre_box_width_pct" name="genre_box_width_pct" value="10" step="1" min="5" max="30">
+                    </div>
+                    <div class="form-group">
+                        <label for="genre_box_height_pct">Genre Box Height (%):</label>
+                        <input type="number" id="genre_box_height_pct" name="genre_box_height_pct" value="33" step="1" min="10" max="50">
+                    </div>
+                    <div class="form-group">
+                        <label for="artist_box_height_pct">Artist Box Height (%):</label>
+                        <input type="number" id="artist_box_height_pct" name="artist_box_height_pct" value="33" step="1" min="10" max="50">
+                    </div>
+                </div>
+                
+                <h3>Text Positioning (Y-Offset in Points)</h3>
+                <div class="dimension-group">
+                    <div class="form-group">
+                        <label for="a_side_y_offset">A-Side Offset:</label>
+                        <input type="number" id="a_side_y_offset" name="a_side_y_offset" value="2" step="0.5" min="-10" max="10">
+                    </div>
+                    <div class="form-group">
+                        <label for="artist_y_offset">Artist Offset:</label>
+                        <input type="number" id="artist_y_offset" name="artist_y_offset" value="2" step="0.5" min="-10" max="10">
+                    </div>
+                    <div class="form-group">
+                        <label for="b_side_y_offset">B-Side Offset:</label>
+                        <input type="number" id="b_side_y_offset" name="b_side_y_offset" value="2" step="0.5" min="-10" max="10">
+                    </div>
+                    <div class="form-group">
+                        <label for="genre_y_offset">Genre Offset:</label>
+                        <input type="number" id="genre_y_offset" name="genre_y_offset" value="2" step="0.5" min="-10" max="10">
+                    </div>
+                </div>
+                
+                <h3>Label Spacing (mm)</h3>
+                <div class="dimension-group">
+                    <div class="form-group">
+                        <label for="gap_x_mm">Horizontal Gap:</label>
+                        <input type="number" id="gap_x_mm" name="gap_x_mm" value="2.0" step="0.1" min="0" max="10">
+                    </div>
+                    <div class="form-group">
+                        <label for="gap_y_mm">Vertical Gap:</label>
+                        <input type="number" id="gap_y_mm" name="gap_y_mm" value="2.0" step="0.1" min="0" max="10">
+                    </div>
+                </div>
+            </form>
+        </div>
+        
+        <div class="section">
+            <h2>Generate Sample Labels</h2>
+            <p>Generate a PDF with sample data to test the label format and dimensions.</p>
+            <button type="button" class="btn" onclick="generateSample()">Generate Sample PDF</button>
+        </div>
+        
+        <div class="section">
+            <h2>Upload Data File</h2>
+            <form action="/generate" method="post" enctype="multipart/form-data">
+                <input type="hidden" name="width" id="fileWidth" value="74.0">
+                <input type="hidden" name="height" id="fileHeight" value="28.0">
+                <input type="hidden" name="genre_box_width_pct" id="fileGenreBoxWidthPct" value="10">
+                <input type="hidden" name="genre_box_height_pct" id="fileGenreBoxHeightPct" value="33">
+                <input type="hidden" name="artist_box_height_pct" id="fileArtistBoxHeightPct" value="33">
+                <input type="hidden" name="a_side_y_offset" id="fileASideYOffset" value="2">
+                <input type="hidden" name="artist_y_offset" id="fileArtistYOffset" value="2">
+                <input type="hidden" name="b_side_y_offset" id="fileBSideYOffset" value="2">
+                <input type="hidden" name="genre_y_offset" id="fileGenreYOffset" value="2">
+                <input type="hidden" name="gap_x_mm" id="fileGapXMm" value="2.0">
+                <input type="hidden" name="gap_y_mm" id="fileGapYMm" value="2.0">
+                
+                <div class="form-group">
+                    <label for="file">Choose JSON or CSV file:</label>
+                    <input type="file" id="file" name="file" accept=".json,.csv" required>
+                </div>
+                
+                <button type="submit" class="btn">Generate PDF from File</button>
+            </form>
+            
+            <div style="margin-top: 20px;">
+                <h3>File Format Examples:</h3>
+                <p><strong>JSON format:</strong></p>
+                <pre style="background: #f8f8f8; padding: 10px; border-radius: 4px; overflow-x: auto;">[
+  {
+    "artist": "The Beatles",
+    "a_side": "Hey Jude", 
+    "b_side": "Revolution",
+    "genre": "Rock"
+  }
+]</pre>
+                
+                <p><strong>CSV format:</strong></p>
+                <pre style="background: #f8f8f8; padding: 10px; border-radius: 4px; overflow-x: auto;">artist,a_side,b_side,genre
+The Beatles,Hey Jude,Revolution,Rock</pre>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Update hidden form fields when dimensions change
+        function updateDimensions() {
+            const width = document.getElementById('width').value;
+            const height = document.getElementById('height').value;
+            const genreBoxWidthPct = document.getElementById('genre_box_width_pct').value;
+            const genreBoxHeightPct = document.getElementById('genre_box_height_pct').value;
+            const artistBoxHeightPct = document.getElementById('artist_box_height_pct').value;
+            const aSideYOffset = document.getElementById('a_side_y_offset').value;
+            const artistYOffset = document.getElementById('artist_y_offset').value;
+            const bSideYOffset = document.getElementById('b_side_y_offset').value;
+            const genreYOffset = document.getElementById('genre_y_offset').value;
+            const gapXMm = document.getElementById('gap_x_mm').value;
+            const gapYMm = document.getElementById('gap_y_mm').value;
+            
+            document.getElementById('fileWidth').value = width;
+            document.getElementById('fileHeight').value = height;
+            document.getElementById('fileGenreBoxWidthPct').value = genreBoxWidthPct;
+            document.getElementById('fileGenreBoxHeightPct').value = genreBoxHeightPct;
+            document.getElementById('fileArtistBoxHeightPct').value = artistBoxHeightPct;
+            document.getElementById('fileASideYOffset').value = aSideYOffset;
+            document.getElementById('fileArtistYOffset').value = artistYOffset;
+            document.getElementById('fileBSideYOffset').value = bSideYOffset;
+            document.getElementById('fileGenreYOffset').value = genreYOffset;
+            document.getElementById('fileGapXMm').value = gapXMm;
+            document.getElementById('fileGapYMm').value = gapYMm;
+        }
+        
+        // Add event listeners to all form inputs
+        document.getElementById('width').addEventListener('input', updateDimensions);
+        document.getElementById('height').addEventListener('input', updateDimensions);
+        document.getElementById('genre_box_width_pct').addEventListener('input', updateDimensions);
+        document.getElementById('genre_box_height_pct').addEventListener('input', updateDimensions);
+        document.getElementById('artist_box_height_pct').addEventListener('input', updateDimensions);
+        document.getElementById('a_side_y_offset').addEventListener('input', updateDimensions);
+        document.getElementById('artist_y_offset').addEventListener('input', updateDimensions);
+        document.getElementById('b_side_y_offset').addEventListener('input', updateDimensions);
+        document.getElementById('genre_y_offset').addEventListener('input', updateDimensions);
+        document.getElementById('gap_x_mm').addEventListener('input', updateDimensions);
+        document.getElementById('gap_y_mm').addEventListener('input', updateDimensions);
+        
+        function generateSample() {
+            const width = document.getElementById('width').value;
+            const height = document.getElementById('height').value;
+            const genreBoxWidthPct = document.getElementById('genre_box_width_pct').value;
+            const genreBoxHeightPct = document.getElementById('genre_box_height_pct').value;
+            const artistBoxHeightPct = document.getElementById('artist_box_height_pct').value;
+            const aSideYOffset = document.getElementById('a_side_y_offset').value;
+            const artistYOffset = document.getElementById('artist_y_offset').value;
+            const bSideYOffset = document.getElementById('b_side_y_offset').value;
+            const genreYOffset = document.getElementById('genre_y_offset').value;
+            const gapXMm = document.getElementById('gap_x_mm').value;
+            const gapYMm = document.getElementById('gap_y_mm').value;
+            
+            const params = new URLSearchParams({
+                width, height, genre_box_width_pct: genreBoxWidthPct,
+                genre_box_height_pct: genreBoxHeightPct, artist_box_height_pct: artistBoxHeightPct,
+                a_side_y_offset: aSideYOffset, artist_y_offset: artistYOffset,
+                b_side_y_offset: bSideYOffset, genre_y_offset: genreYOffset,
+                gap_x_mm: gapXMm, gap_y_mm: gapYMm
+            });
+            
+            window.open(`/sample?${params.toString()}`, '_blank');
+        }
+    </script>
+</body>
+</html>

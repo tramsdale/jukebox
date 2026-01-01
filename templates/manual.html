@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual Entry - Juke Box Label Generator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #d32f2f;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+        }
+        .section h2 {
+            color: #333;
+            margin-top: 0;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="text"], input[type="number"], select, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        textarea {
+            height: 120px;
+            font-family: monospace;
+        }
+        .dimension-group {
+            display: flex;
+            gap: 15px;
+        }
+        .dimension-group .form-group {
+            flex: 1;
+        }
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .config-grid .form-group {
+            margin-bottom: 0;
+        }
+        .btn {
+            background-color: #d32f2f;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        .btn:hover {
+            background-color: #b71c1c;
+        }
+        .btn-secondary {
+            background-color: #666;
+        }
+        .btn-secondary:hover {
+            background-color: #555;
+        }
+        .alert {
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 1px solid transparent;
+            border-radius: 4px;
+        }
+        .alert-error {
+            color: #721c24;
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+        }
+        .nav-links {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .nav-links a {
+            color: #d32f2f;
+            text-decoration: none;
+            margin: 0 15px;
+            font-weight: bold;
+        }
+        .nav-links a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎵 Manual Label Entry</h1>
+        
+        <div class="nav-links">
+            <a href="/">File Upload</a>
+            <a href="/manual">Manual Entry</a>
+        </div>
+        
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-error">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        <div class="section">
+            <h2>Label Dimensions</h2>
+            <div class="dimension-group">
+                <div class="form-group">
+                    <label for="width">Width (mm):</label>
+                    <input type="number" id="width" name="width" value="74.0" step="0.1" min="10" max="200">
+                </div>
+                <div class="form-group">
+                    <label for="height">Height (mm):</label>
+                    <input type="number" id="height" name="height" value="28.0" step="0.1" min="10" max="100">
+                </div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Layout Configuration</h2>
+            <div class="config-grid">
+                <div class="form-group">
+                    <label for="genre_box_width_pct">Genre Box Width (%):</label>
+                    <input type="number" id="genre_box_width_pct" name="genre_box_width_pct" value="25" step="1" min="10" max="50">
+                </div>
+                <div class="form-group">
+                    <label for="genre_box_height_pct">Genre Box Height (%):</label>
+                    <input type="number" id="genre_box_height_pct" name="genre_box_height_pct" value="40" step="1" min="20" max="70">
+                </div>
+                <div class="form-group">
+                    <label for="artist_box_height_pct">Artist Box Height (%):</label>
+                    <input type="number" id="artist_box_height_pct" name="artist_box_height_pct" value="50" step="1" min="20" max="80">
+                </div>
+            </div>
+            
+            <h3>Text Position Offsets</h3>
+            <div class="config-grid">
+                <div class="form-group">
+                    <label for="a_side_y_offset">A-Side Y Offset:</label>
+                    <input type="number" id="a_side_y_offset" name="a_side_y_offset" value="0" step="0.5" min="-10" max="10">
+                </div>
+                <div class="form-group">
+                    <label for="artist_y_offset">Artist Y Offset:</label>
+                    <input type="number" id="artist_y_offset" name="artist_y_offset" value="0" step="0.5" min="-10" max="10">
+                </div>
+                <div class="form-group">
+                    <label for="b_side_y_offset">B-Side Y Offset:</label>
+                    <input type="number" id="b_side_y_offset" name="b_side_y_offset" value="0" step="0.5" min="-10" max="10">
+                </div>
+                <div class="form-group">
+                    <label for="genre_y_offset">Genre Y Offset:</label>
+                    <input type="number" id="genre_y_offset" name="genre_y_offset" value="0" step="0.5" min="-10" max="10">
+                </div>
+            </div>
+            
+            <h3>Spacing</h3>
+            <div class="config-grid">
+                <div class="form-group">
+                    <label for="gap_x_mm">Horizontal Gap (mm):</label>
+                    <input type="number" id="gap_x_mm" name="gap_x_mm" value="2" step="0.1" min="0" max="10">
+                </div>
+                <div class="form-group">
+                    <label for="gap_y_mm">Vertical Gap (mm):</label>
+                    <input type="number" id="gap_y_mm" name="gap_y_mm" value="2" step="0.1" min="0" max="10">
+                </div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Single Label Entry</h2>
+            <form action="/generate" method="post">
+                <input type="hidden" name="width" id="singleWidth" value="74.0">
+                <input type="hidden" name="height" id="singleHeight" value="28.0">
+                <input type="hidden" name="genre_box_width_pct" id="singleGenreBoxWidthPct" value="25">
+                <input type="hidden" name="genre_box_height_pct" id="singleGenreBoxHeightPct" value="40">
+                <input type="hidden" name="artist_box_height_pct" id="singleArtistBoxHeightPct" value="50">
+                <input type="hidden" name="a_side_y_offset" id="singleASideYOffset" value="0">
+                <input type="hidden" name="artist_y_offset" id="singleArtistYOffset" value="0">
+                <input type="hidden" name="b_side_y_offset" id="singleBSideYOffset" value="0">
+                <input type="hidden" name="genre_y_offset" id="singleGenreYOffset" value="0">
+                <input type="hidden" name="gap_x_mm" id="singleGapXMm" value="2">
+                <input type="hidden" name="gap_y_mm" id="singleGapYMm" value="2">
+                
+                <div class="form-group">
+                    <label for="artist">Artist Name:</label>
+                    <input type="text" id="artist" name="artist" placeholder="e.g., The Beatles" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="a_side">A-Side Track:</label>
+                    <input type="text" id="a_side" name="a_side" placeholder="e.g., Hey Jude" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="b_side">B-Side Track:</label>
+                    <input type="text" id="b_side" name="b_side" placeholder="e.g., Revolution" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="genre">Genre:</label>
+                    <select id="genre" name="genre" required>
+                        <option value="">Select Genre</option>
+                        <option value="Rock">Rock</option>
+                        <option value="Pop">Pop</option>
+                        <option value="Jazz">Jazz</option>
+                        <option value="Blues">Blues</option>
+                        <option value="Country">Country</option>
+                        <option value="Classical">Classical</option>
+                        <option value="Electronic">Electronic</option>
+                        <option value="Reggae">Reggae</option>
+                        <option value="Soul">Soul</option>
+                        <option value="Hip-Hop">Hip-Hop</option>
+                        <option value="Funk">Funk</option>
+                    </select>
+                </div>
+                
+                <button type="submit" class="btn">Generate Single Label PDF</button>
+            </form>
+        </div>
+        
+        <div class="section">
+            <h2>Multiple Labels (JSON)</h2>
+            <p>Enter multiple labels in JSON format:</p>
+            <form action="/generate" method="post">
+                <input type="hidden" name="width" id="multiWidth" value="74.0">
+                <input type="hidden" name="height" id="multiHeight" value="28.0">
+                <input type="hidden" name="genre_box_width_pct" id="multiGenreBoxWidthPct" value="25">
+                <input type="hidden" name="genre_box_height_pct" id="multiGenreBoxHeightPct" value="40">
+                <input type="hidden" name="artist_box_height_pct" id="multiArtistBoxHeightPct" value="50">
+                <input type="hidden" name="a_side_y_offset" id="multiASideYOffset" value="0">
+                <input type="hidden" name="artist_y_offset" id="multiArtistYOffset" value="0">
+                <input type="hidden" name="b_side_y_offset" id="multiBSideYOffset" value="0">
+                <input type="hidden" name="genre_y_offset" id="multiGenreYOffset" value="0">
+                <input type="hidden" name="gap_x_mm" id="multiGapXMm" value="2">
+                <input type="hidden" name="gap_y_mm" id="multiGapYMm" value="2">
+                
+                <div class="form-group">
+                    <label for="labels_json">Labels JSON:</label>
+                    <textarea id="labels_json" name="labels_json" placeholder='[
+  {
+    "artist": "The Beatles",
+    "a_side": "Hey Jude",
+    "b_side": "Revolution", 
+    "genre": "Rock"
+  },
+  {
+    "artist": "Miles Davis",
+    "a_side": "So What",
+    "b_side": "Kind of Blue",
+    "genre": "Jazz"
+  }
+]'></textarea>
+                </div>
+                
+                <button type="submit" class="btn">Generate Multiple Labels PDF</button>
+                <button type="button" class="btn btn-secondary" onclick="addSampleJSON()">Load Sample Data</button>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        // Update hidden form fields when parameters change
+        function updateDimensions() {
+            const width = document.getElementById('width').value;
+            const height = document.getElementById('height').value;
+            const genreBoxWidthPct = document.getElementById('genre_box_width_pct').value;
+            const genreBoxHeightPct = document.getElementById('genre_box_height_pct').value;
+            const artistBoxHeightPct = document.getElementById('artist_box_height_pct').value;
+            const aSideYOffset = document.getElementById('a_side_y_offset').value;
+            const artistYOffset = document.getElementById('artist_y_offset').value;
+            const bSideYOffset = document.getElementById('b_side_y_offset').value;
+            const genreYOffset = document.getElementById('genre_y_offset').value;
+            const gapXMm = document.getElementById('gap_x_mm').value;
+            const gapYMm = document.getElementById('gap_y_mm').value;
+            
+            // Update single form hidden fields
+            document.getElementById('singleWidth').value = width;
+            document.getElementById('singleHeight').value = height;
+            document.getElementById('singleGenreBoxWidthPct').value = genreBoxWidthPct;
+            document.getElementById('singleGenreBoxHeightPct').value = genreBoxHeightPct;
+            document.getElementById('singleArtistBoxHeightPct').value = artistBoxHeightPct;
+            document.getElementById('singleASideYOffset').value = aSideYOffset;
+            document.getElementById('singleArtistYOffset').value = artistYOffset;
+            document.getElementById('singleBSideYOffset').value = bSideYOffset;
+            document.getElementById('singleGenreYOffset').value = genreYOffset;
+            document.getElementById('singleGapXMm').value = gapXMm;
+            document.getElementById('singleGapYMm').value = gapYMm;
+            
+            // Update multi form hidden fields
+            document.getElementById('multiWidth').value = width;
+            document.getElementById('multiHeight').value = height;
+            document.getElementById('multiGenreBoxWidthPct').value = genreBoxWidthPct;
+            document.getElementById('multiGenreBoxHeightPct').value = genreBoxHeightPct;
+            document.getElementById('multiArtistBoxHeightPct').value = artistBoxHeightPct;
+            document.getElementById('multiASideYOffset').value = aSideYOffset;
+            document.getElementById('multiArtistYOffset').value = artistYOffset;
+            document.getElementById('multiBSideYOffset').value = bSideYOffset;
+            document.getElementById('multiGenreYOffset').value = genreYOffset;
+            document.getElementById('multiGapXMm').value = gapXMm;
+            document.getElementById('multiGapYMm').value = gapYMm;
+        }
+        
+        // Add event listeners to all form inputs
+        document.getElementById('width').addEventListener('input', updateDimensions);
+        document.getElementById('height').addEventListener('input', updateDimensions);
+        document.getElementById('genre_box_width_pct').addEventListener('input', updateDimensions);
+        document.getElementById('genre_box_height_pct').addEventListener('input', updateDimensions);
+        document.getElementById('artist_box_height_pct').addEventListener('input', updateDimensions);
+        document.getElementById('a_side_y_offset').addEventListener('input', updateDimensions);
+        document.getElementById('artist_y_offset').addEventListener('input', updateDimensions);
+        document.getElementById('b_side_y_offset').addEventListener('input', updateDimensions);
+        document.getElementById('genre_y_offset').addEventListener('input', updateDimensions);
+        document.getElementById('gap_x_mm').addEventListener('input', updateDimensions);
+        document.getElementById('gap_y_mm').addEventListener('input', updateDimensions);
+        
+        function addSampleJSON() {
+            const sampleData = [
+                {
+                    "artist": "The Beatles",
+                    "a_side": "Hey Jude",
+                    "b_side": "Revolution",
+                    "genre": "Rock"
+                },
+                {
+                    "artist": "Miles Davis", 
+                    "a_side": "So What",
+                    "b_side": "Kind of Blue",
+                    "genre": "Jazz"
+                },
+                {
+                    "artist": "Madonna",
+                    "a_side": "Like a Virgin",
+                    "b_side": "Material Girl", 
+                    "genre": "Pop"
+                }
+            ];
+            
+            document.getElementById('labels_json').value = JSON.stringify(sampleData, null, 2);
+        }
+    </script>
+</body>
+</html>

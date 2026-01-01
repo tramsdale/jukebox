@@ -1,0 +1,62 @@
+[
+  {
+    "artist": "The Beatles",
+    "a_side": "Hey Jude",
+    "b_side": "Revolution",
+    "genre": "Rock"
+  },
+  {
+    "artist": "Miles Davis",
+    "a_side": "So What",
+    "b_side": "Kind of Blue",
+    "genre": "Jazz"
+  },
+  {
+    "artist": "Madonna",
+    "a_side": "Like a Virgin",
+    "b_side": "Material Girl",
+    "genre": "Pop"
+  },
+  {
+    "artist": "Johnny Cash",
+    "a_side": "Ring of Fire",
+    "b_side": "I Walk the Line",
+    "genre": "Country"
+  },
+  {
+    "artist": "B.B. King",
+    "a_side": "The Thrill Is Gone",
+    "b_side": "Sweet Little Angel",
+    "genre": "Blues"
+  },
+  {
+    "artist": "Daft Punk",
+    "a_side": "Around the World",
+    "b_side": "Da Funk",
+    "genre": "Electronic"
+  },
+  {
+    "artist": "Bob Marley",
+    "a_side": "No Woman No Cry",
+    "b_side": "Could You Be Loved",
+    "genre": "Reggae"
+  },
+  {
+    "artist": "Aretha Franklin",
+    "a_side": "Respect",
+    "b_side": "Chain of Fools",
+    "genre": "Soul"
+  },
+  {
+    "artist": "Mozart",
+    "a_side": "Symphony No. 40",
+    "b_side": "Piano Sonata 11",
+    "genre": "Classical"
+  },
+  {
+    "artist": "James Brown",
+    "a_side": "I Got You",
+    "b_side": "Papa's Got a Brand New Bag",
+    "genre": "Funk"
+  }
+]
