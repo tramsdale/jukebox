@@ -84,6 +84,18 @@ class LabelFlowable(Flowable):
             # Show up to 6 characters for other genres
             return genre.upper()[:6]
     
+    def _fit_text_to_width(self, canvas, text, font_name, max_font_size, available_width):
+        """Reduce font size until text fits within available width."""
+        font_size = max_font_size
+        while font_size > 4:  # Minimum readable size
+            text_width = canvas.stringWidth(text, font_name, font_size)
+            if text_width <= available_width:
+                return font_size, text_width
+            font_size -= 0.5
+        # If we get here, use minimum size anyway
+        text_width = canvas.stringWidth(text, font_name, font_size)
+        return font_size, text_width
+    
     def draw(self):
         """Draw a simple, clean jukebox label."""
         canvas = self.canv
@@ -92,7 +104,7 @@ class LabelFlowable(Flowable):
         # Get genre-specific colors
         genre_config = self.genre_config.get_genre_config(self.label.genre)
         genre_color = self._hex_to_color(genre_config['background_color'])
-        bg_color = self._get_genre_bg_color(genre_color)
+        bg_color = self._hex_to_color(genre_config['label_background_color'])
         
         # Draw background
         canvas.setFillColor(bg_color)
@@ -135,27 +147,36 @@ class LabelFlowable(Flowable):
         canvas.setFillColor(colors.black)
         
         # A-side (top section, centered)
-        canvas.setFont("Helvetica-Bold", self.main_font_size)
         a_text = self.label.a_side
-        a_width = canvas.stringWidth(a_text, "Helvetica-Bold", self.main_font_size)
+        available_a_width = w - 20  # Leave 10pt margin on each side
+        a_font_size, a_width = self._fit_text_to_width(
+            canvas, a_text, "Helvetica-Bold", self.main_font_size, available_a_width
+        )
+        canvas.setFont("Helvetica-Bold", a_font_size)
         # Center vertically in the A-side section, with optional offset
-        a_side_text_y = a_side_y + (a_side_height / 2) - (self.main_font_size/3) + self.a_side_y_offset
+        a_side_text_y = a_side_y + (a_side_height / 2) - (a_font_size/3) + self.a_side_y_offset
         canvas.drawString(w/2 - a_width/2, a_side_text_y, a_text)
         
         # Artist (middle banner, centered)
-        canvas.setFont("Helvetica-Bold", self.main_font_size)
         artist_text = self.label.get_display_artist()
-        artist_width = canvas.stringWidth(artist_text, "Helvetica-Bold", self.main_font_size)
+        available_artist_width = artist_banner_width - 10  # Leave 5pt margin on each side
+        artist_font_size, artist_width = self._fit_text_to_width(
+            canvas, artist_text, "Helvetica-Bold", self.main_font_size, available_artist_width
+        )
+        canvas.setFont("Helvetica-Bold", artist_font_size)
         # Center vertically in the artist box, with optional offset
-        artist_text_y = artist_box_y + (artist_box_height / 2) - (self.main_font_size/3) + self.artist_y_offset
+        artist_text_y = artist_box_y + (artist_box_height / 2) - (artist_font_size/3) + self.artist_y_offset
         canvas.drawString(w/2 - artist_width/2, artist_text_y, artist_text)
         
         # B-side (bottom section, centered)
-        canvas.setFont("Helvetica-Bold", self.main_font_size)
         b_text = self.label.b_side
-        b_width = canvas.stringWidth(b_text, "Helvetica-Bold", self.main_font_size)
+        available_b_width = w - 20  # Leave 10pt margin on each side
+        b_font_size, b_width = self._fit_text_to_width(
+            canvas, b_text, "Helvetica-Bold", self.main_font_size, available_b_width
+        )
+        canvas.setFont("Helvetica-Bold", b_font_size)
         # Center vertically in the B-side section, with optional offset
-        b_side_text_y = b_side_y + (b_side_height / 2) - (self.main_font_size/3) + self.b_side_y_offset
+        b_side_text_y = b_side_y + (b_side_height / 2) - (b_font_size/3) + self.b_side_y_offset
         canvas.drawString(w/2 - b_width/2, b_side_text_y, b_text)
         
         # Genre in tabs with genre-specific text color
@@ -219,20 +240,20 @@ class GenreConfig:
         """Return default genre configuration."""
         return {
             'genres': {
-                'rock': {'background_color': '#FF6B6B', 'text_color': '#FFFFFF'},
-                'pop': {'background_color': '#4ECDC4', 'text_color': '#FFFFFF'},
-                'jazz': {'background_color': '#45B7D1', 'text_color': '#FFFFFF'},
-                'classical': {'background_color': '#96CEB4', 'text_color': '#2C3E50'},
-                'blues': {'background_color': '#6C5CE7', 'text_color': '#FFFFFF'},
-                'country': {'background_color': '#FDCB6E', 'text_color': '#2D3436'},
-                'electronic': {'background_color': '#A29BFE', 'text_color': '#FFFFFF'},
-                'reggae': {'background_color': '#00B894', 'text_color': '#FFFFFF'},
-                'soul': {'background_color': '#E17055', 'text_color': '#FFFFFF'},
-                'hip-hop': {'background_color': '#2D3436', 'text_color': '#FFFFFF'},
-                'funk': {'background_color': '#FD79A8', 'text_color': '#FFFFFF'},
-                'oldy': {'background_color': '#B8860B', 'text_color': '#FFFFFF'},
-                'disco': {'background_color': '#FF1493', 'text_color': '#FFFFFF'},
-                'default': {'background_color': '#DDDDDD', 'text_color': '#333333'}
+                'rock': {'background_color': '#FF6B6B', 'label_background_color': '#FFF0F0', 'text_color': '#FFFFFF'},
+                'pop': {'background_color': '#4ECDC4', 'label_background_color': '#F0FDFC', 'text_color': '#FFFFFF'},
+                'jazz': {'background_color': '#45B7D1', 'label_background_color': '#F0F8FF', 'text_color': '#FFFFFF'},
+                'classical': {'background_color': '#96CEB4', 'label_background_color': '#F8FFFC', 'text_color': '#2C3E50'},
+                'blues': {'background_color': '#6C5CE7', 'label_background_color': '#F5F4FF', 'text_color': '#FFFFFF'},
+                'country': {'background_color': '#FDCB6E', 'label_background_color': '#FFFCF0', 'text_color': '#2D3436'},
+                'electronic': {'background_color': '#A29BFE', 'label_background_color': '#F8F7FF', 'text_color': '#FFFFFF'},
+                'reggae': {'background_color': '#00B894', 'label_background_color': '#F0FFFB', 'text_color': '#FFFFFF'},
+                'soul': {'background_color': '#E17055', 'label_background_color': '#FFF5F0', 'text_color': '#FFFFFF'},
+                'hip-hop': {'background_color': '#2D3436', 'label_background_color': '#F8F8F8', 'text_color': '#FFFFFF'},
+                'funk': {'background_color': '#FD79A8', 'label_background_color': '#FFF5F9', 'text_color': '#FFFFFF'},
+                'oldy': {'background_color': '#B8860B', 'label_background_color': '#FFFCF0', 'text_color': '#FFFFFF'},
+                'disco': {'background_color': '#FF1493', 'label_background_color': '#FFF0F8', 'text_color': '#FFFFFF'},
+                'default': {'background_color': '#DDDDDD', 'label_background_color': '#F9F9F9', 'text_color': '#333333'}
             }
         }
     

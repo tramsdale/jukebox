@@ -1,43 +1,57 @@
 genres:
   rock:
-    background_color: '#FF6B6B'  # Coral red
+    background_color: '#779CE3'  # Blue
+    label_background_color: '#CEDCF2'  # Very light blue
     text_color: '#FFFFFF'
   pop:
-    background_color: '#4ECDC4'  # Turquoise
+    background_color: '#EA3323'  # Red
+    label_background_color: '#F6C3CB'  # Very light red
     text_color: '#FFFFFF'
   jazz:
     background_color: '#45B7D1'  # Blue
+    label_background_color: '#F0F8FF'  # Very light blue
     text_color: '#FFFFFF'
   classical:
     background_color: '#96CEB4'  # Light green
+    label_background_color: '#F8FFFC'  # Very light green
     text_color: '#2C3E50'
   blues:
     background_color: '#6C5CE7'  # Purple
+    label_background_color: '#F5F4FF'  # Very light purple
     text_color: '#FFFFFF'
   country:
-    background_color: '#FDCB6E'  # Yellow
+    background_color: '#75147C'  # Purple
+    label_background_color: '#D4A3DA'  # Very light purple
     text_color: '#2D3436'
   electronic:
     background_color: '#A29BFE'  # Light purple
+    label_background_color: '#F8F7FF'  # Very light purple
     text_color: '#FFFFFF'
   reggae:
     background_color: '#00B894'  # Green
+    label_background_color: '#F0FFFB'  # Very light green
     text_color: '#FFFFFF'
   soul:
     background_color: '#E17055'  # Orange
+    label_background_color: '#FFF5F0'  # Very light orange
     text_color: '#FFFFFF'
   hip-hop:
     background_color: '#2D3436'  # Dark gray
+    label_background_color: '#F8F8F8'  # Very light gray
     text_color: '#FFFFFF'
   funk:
     background_color: '#FD79A8'  # Pink
+    label_background_color: '#FFF5F9'  # Very light pink
     text_color: '#FFFFFF'
   oldy:
-    background_color: '#B8860B'  # Dark goldenrod
+    background_color: '#EF8750'  # Dark goldenrod
+    label_background_color: '#F6C3A1'  # Very light goldenrod
     text_color: '#FFFFFF'
   disco:
-    background_color: '#FF1493'  # Deep pink
+    background_color: '#6A9B61'  # Deep green
+    label_background_color: '#BAD7B3'  # Very light green
     text_color: '#FFFFFF'
   default:
     background_color: '#DDDDDD'     # Light gray
+    label_background_color: '#F9F9F9'  # Very light gray
     text_color: '#333333'
