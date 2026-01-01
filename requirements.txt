@@ -1,0 +1,18 @@
+# Lambda-specific requirements
+awslambda-wsgi==0.2.0
+mangum==0.17.0
+
+# Core application dependencies (from pyproject.toml)
+flask>=3.0.0
+flask-sqlalchemy>=3.1.0
+flask-login>=0.6.0
+flask-migrate>=4.0.0
+pymysql>=1.1.0
+reportlab>=4.0.0
+pyyaml>=6.0.0
+werkzeug>=3.0.0
+
+# Development/testing (optional for Lambda)
+# pytest>=8.0.0
+# pytest-flask>=1.3.0
+# pytest-cov>=7.0.0

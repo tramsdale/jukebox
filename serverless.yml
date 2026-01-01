@@ -1,0 +1,76 @@
+service: jukebox-app
+
+provider:
+  name: aws
+  runtime: python3.11
+  region: us-east-1
+  stage: ${opt:stage, 'prod'}
+  timeout: 30
+  memorySize: 512
+  
+  environment:
+    FLASK_ENV: production
+    DATABASE_URL: ${env:DATABASE_URL, 'sqlite:///tmp/jukebox.db'}
+    SECRET_KEY: ${env:SECRET_KEY, ''}
+    
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - s3:GetObject
+        - s3:PutObject
+      Resource: "arn:aws:s3:::jukebox-static-files/*"
+
+functions:
+  app:
+    handler: lambda_function.lambda_handler
+    events:
+      - http:
+          path: /
+          method: ANY
+          cors: true
+      - http:
+          path: /{proxy+}
+          method: ANY
+          cors: true
+    layers:
+      - arn:aws:lambda:us-east-1:764866452798:layer:chrome-aws-lambda:25
+
+plugins:
+  - serverless-python-requirements
+  - serverless-wsgi
+  - serverless-domain-manager
+
+custom:
+  pythonRequirements:
+    dockerizePip: true
+    pipCmdExtraArgs:
+      - --no-cache-dir
+    slim: true
+    strip: false
+    
+  wsgi:
+    app: app.app
+    
+  customDomain:
+    domainName: jukebox.tcla.me
+    stage: ${self:provider.stage}
+    certificateName: '*.tcla.me'
+    createRoute53Record: true
+    endpointType: 'regional'
+    securityPolicy: tls_1_2
+    apiType: rest
+
+package:
+  patterns:
+    - '!tests/**'
+    - '!.pytest_cache/**'
+    - '!htmlcov/**'
+    - '!.coverage'
+    - '!README.md'
+    - '!.git/**'
+    - '!.venv/**'
+    - '!node_modules/**'
+    - '!.serverless/**'
+    - 'templates/**'
+    - 'config/**'
+    - 'static/**'

@@ -45,17 +45,41 @@ def load_user(user_id):
     return None
 
 # Database configuration
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///jukebox.db')
+if 'AWS_LAMBDA_FUNCTION_NAME' in os.environ:
+    # Lambda environment - use environment variable or default to SQLite in /tmp
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
+        'DATABASE_URL', 
+        'sqlite:///tmp/jukebox.db'
+    )
+    # Ensure /tmp directory exists and is writable
+    os.makedirs('/tmp', exist_ok=True)
+else:
+    # Local development
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///jukebox.db')
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'pool_recycle': 300,
+    'pool_pre_ping': True,
+}
 
 # Initialize database
 db.init_app(app)
 migrate = Migrate(app, db)
 
-# Configure upload folder
-UPLOAD_FOLDER = 'uploads'
+# Configure directories for Lambda/local environment
+if 'AWS_LAMBDA_FUNCTION_NAME' in os.environ:
+    # Lambda environment
+    UPLOAD_FOLDER = '/tmp/uploads'
+    OUTPUT_FOLDER = '/tmp/output'
+else:
+    # Local development
+    UPLOAD_FOLDER = 'uploads'
+    OUTPUT_FOLDER = 'output'
+
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
 ALLOWED_EXTENSIONS = {'json', 'csv'}
 
@@ -222,6 +246,7 @@ def generate_pdf():
         
         # Generate PDF
         generator = LabelGenerator(
+            output_dir=OUTPUT_FOLDER,
             label_width_mm=width, 
             label_height_mm=height,
             genre_box_width_pct=genre_box_width_pct,
@@ -282,6 +307,7 @@ def generate_sample():
         
         # Generate PDF
         generator = LabelGenerator(
+            output_dir=OUTPUT_FOLDER,
             label_width_mm=width, 
             label_height_mm=height,
             genre_box_width_pct=genre_box_width_pct,
@@ -442,6 +468,7 @@ def print_selected():
         
         # Generate PDF
         generator = LabelGenerator(
+            output_dir=OUTPUT_FOLDER,
             label_width_mm=settings['width'],
             label_height_mm=settings['height'],
             genre_box_width_pct=settings['genre_box_width_pct'],

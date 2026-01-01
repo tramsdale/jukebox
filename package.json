@@ -1,0 +1,16 @@
+{
+  "name": "jukebox-lambda-deployment",
+  "version": "1.0.0",
+  "description": "Serverless deployment configuration for jukebox app",
+  "scripts": {
+    "deploy": "serverless deploy",
+    "remove": "serverless remove",
+    "logs": "serverless logs -f app"
+  },
+  "devDependencies": {
+    "serverless": "^3.38.0",
+    "serverless-python-requirements": "^6.0.0",
+    "serverless-wsgi": "^3.0.2",
+    "serverless-domain-manager": "^7.0.2"
+  }
+}
