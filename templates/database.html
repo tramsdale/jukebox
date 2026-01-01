@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jukebox Database - Juke Box Label Generator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #d32f2f;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .nav-links {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 15px;
+            background-color: #f8f8f8;
+            border-radius: 5px;
+        }
+        .nav-links a {
+            color: #d32f2f;
+            text-decoration: none;
+            margin: 0 20px;
+            font-weight: bold;
+        }
+        .nav-links a:hover {
+            text-decoration: underline;
+        }
+        .controls {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .control-group label {
+            font-weight: bold;
+            color: #555;
+            font-size: 14px;
+        }
+        .control-group input, .control-group select {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .btn {
+            background-color: #d32f2f;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 14px;
+            margin: 5px;
+        }
+        .btn:hover {
+            background-color: #b71c1c;
+        }
+        .btn-secondary {
+            background-color: #666;
+        }
+        .btn-secondary:hover {
+            background-color: #555;
+        }
+        .btn-small {
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+        .alert {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .alert-error {
+            background-color: #ffebee;
+            border: 1px solid #f44336;
+            color: #d32f2f;
+        }
+        .alert-success {
+            background-color: #e8f5e8;
+            border: 1px solid #4caf50;
+            color: #2e7d32;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f5f5f5;
+            font-weight: bold;
+            cursor: pointer;
+            user-select: none;
+        }
+        th:hover {
+            background-color: #e8e8e8;
+        }
+        .sort-arrow {
+            margin-left: 5px;
+            font-size: 12px;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tr:hover {
+            background-color: #f0f0f0;
+        }
+        .status-badge {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status-in-jukebox { background-color: #4caf50; color: white; }
+        .status-new { background-color: #2196f3; color: white; }
+        .status-in-storage { background-color: #ff9800; color: white; }
+        .status-wishlist { background-color: #9c27b0; color: white; }
+        
+        .genre-badge {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            display: inline-block;
+        }
+        .genre-rock { background-color: #FF6B6B; color: #FFFFFF; }
+        .genre-pop { background-color: #4ECDC4; color: #FFFFFF; }
+        .genre-jazz { background-color: #45B7D1; color: #FFFFFF; }
+        .genre-classical { background-color: #96CEB4; color: #2C3E50; }
+        .genre-blues { background-color: #6C5CE7; color: #FFFFFF; }
+        .genre-country { background-color: #FDCB6E; color: #2D3436; }
+        .genre-electronic { background-color: #A29BFE; color: #FFFFFF; }
+        .genre-reggae { background-color: #00B894; color: #FFFFFF; }
+        .genre-soul { background-color: #E17055; color: #FFFFFF; }
+        .genre-hip-hop { background-color: #2D3436; color: #FFFFFF; }
+        .genre-funk { background-color: #FD79A8; color: #FFFFFF; }
+        .genre-oldy { background-color: #B8860B; color: #FFFFFF; }
+        .genre-disco { background-color: #FF1493; color: #FFFFFF; }
+        .genre-unknown, .genre-other { background-color: #DDD; color: #333; }
+        .actions {
+            white-space: nowrap;
+        }
+        .checkbox-column {
+            width: 40px;
+            text-align: center;
+        }
+        .status-column {
+            width: 120px;
+            white-space: nowrap;
+        }
+        .print-controls {
+            position: sticky;
+            bottom: 0;
+            background: white;
+            border-top: 2px solid #ddd;
+            padding: 15px;
+            margin: 20px -30px -30px -30px;
+        }
+        .selected-count {
+            color: #d32f2f;
+            font-weight: bold;
+            margin-right: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎵 Jukebox Database</h1>
+        
+        <div class="nav-links">
+            <a href="/">File Upload</a>
+            <a href="/manual">Manual Entry</a>
+            <a href="/database">Database</a>
+            <a href="/settings">Settings</a>
+        </div>
+        
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-success">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        <div class="controls">
+            <div class="control-group">
+                <label for="status-filter">Status Filter:</label>
+                <select id="status-filter" onchange="updateFilters()">
+                    <option value="">All Statuses</option>
+                    {% for status in statuses %}
+                    <option value="{{ status.value }}" {% if current_status == status.value %}selected{% endif %}>
+                        {{ status.value }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="search-input">Search:</label>
+                <input type="text" id="search-input" placeholder="Artist, track, or jukebox ID..." 
+                       value="{{ current_search }}" onkeyup="handleSearchInput()">
+            </div>
+            
+            <div class="control-group">
+                <label>&nbsp;</label>
+                <button class="btn" onclick="clearFilters()">Clear Filters</button>
+            </div>
+            
+            <div class="control-group">
+                <label>&nbsp;</label>
+                <a href="/database/add" class="btn">+ Add New Record</a>
+            </div>
+            
+            <div class="control-group">
+                <label>&nbsp;</label>
+                <a href="/database/import" class="btn btn-secondary">📁 Import CSV</a>
+            </div>
+        </div>
+        
+        <form id="print-form" method="post" action="/database/print">
+            <table>
+                <thead>
+                    <tr>
+                        <th class="checkbox-column">
+                            <input type="checkbox" id="select-all" onchange="toggleSelectAll()">
+                        </th>
+                        <th onclick="sortTable('artist_a_side')">
+                            Artist A-Side 
+                            <span class="sort-arrow">{% if current_sort == 'artist_a_side' %}{{ '▼' if current_order == 'desc' else '▲' }}{% else %}⇅{% endif %}</span>
+                        </th>
+                        <th onclick="sortTable('track_a_side')">
+                            Track A-Side
+                            <span class="sort-arrow">{% if current_sort == 'track_a_side' %}{{ '▼' if current_order == 'desc' else '▲' }}{% else %}⇅{% endif %}</span>
+                        </th>
+                        <th onclick="sortTable('artist_b_side')">
+                            Artist B-Side
+                            <span class="sort-arrow">{% if current_sort == 'artist_b_side' %}{{ '▼' if current_order == 'desc' else '▲' }}{% else %}⇅{% endif %}</span>
+                        </th>
+                        <th onclick="sortTable('track_b_side')">
+                            Track B-Side
+                            <span class="sort-arrow">{% if current_sort == 'track_b_side' %}{{ '▼' if current_order == 'desc' else '▲' }}{% else %}⇅{% endif %}</span>
+                        </th>
+                        <th onclick="sortTable('status')" class="status-column">
+                            Status
+                            <span class="sort-arrow">{% if current_sort == 'status' %}{{ '▼' if current_order == 'desc' else '▲' }}{% else %}⇅{% endif %}</span>
+                        </th>
+                        <th onclick="sortTable('genre')">
+                            Genre
+                            <span class="sort-arrow">{% if current_sort == 'genre' %}{{ '▼' if current_order == 'desc' else '▲' }}{% else %}⇅{% endif %}</span>
+                        </th>
+                        <th onclick="sortTable('jukebox_id')">
+                            Jukebox ID
+                            <span class="sort-arrow">{% if current_sort == 'jukebox_id' %}{{ '▼' if current_order == 'desc' else '▲' }}{% else %}⇅{% endif %}</span>
+                        </th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for record in records %}
+                    <tr>
+                        <td class="checkbox-column">
+                            <input type="checkbox" name="selected_records" value="{{ record.id }}" 
+                                   onchange="updateSelectedCount()">
+                        </td>
+                        <td>{{ record.artist_a_side }}</td>
+                        <td>{{ record.track_a_side }}</td>
+                        <td>{{ record.artist_b_side }}</td>
+                        <td>{{ record.track_b_side }}</td>
+                        <td class="status-column">
+                            <span class="status-badge status-{{ record.status.value.lower().replace(' ', '-') }}">
+                                {{ record.status.value }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if record.genre %}
+                                <span class="genre-badge genre-{{ record.genre.lower().replace(' ', '-') }}">
+                                    {{ record.genre }}
+                                </span>
+                            {% else %}
+                                <span class="genre-badge genre-unknown">
+                                    Unknown
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td>{{ record.jukebox_id or '' }}</td>
+                        <td class="actions">
+                            <a href="/database/edit/{{ record.id }}" class="btn btn-small btn-secondary">Edit</a>
+                            <button type="button" class="btn btn-small" 
+                                    onclick="deleteRecord({{ record.id }}, '{{ record.artist_a_side }} - {{ record.track_a_side }}')">
+                                Delete
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            
+            <div class="print-controls">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <div>
+                        <span class="selected-count" id="selected-count">0 records selected</span>
+                        <button type="submit" class="btn" id="print-btn" disabled>Generate Labels for Selected</button>
+                    </div>
+                    <div>
+                        <a href="/settings" class="btn btn-secondary">Configure Layout</a>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+    
+    <script>
+        let searchTimeout;
+        
+        function updateFilters() {
+            const status = document.getElementById('status-filter').value;
+            const search = document.getElementById('search-input').value;
+            
+            const params = new URLSearchParams();
+            if (status) params.set('status', status);
+            if (search) params.set('search', search);
+            
+            window.location.href = '/database?' + params.toString();
+        }
+        
+        function handleSearchInput() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(updateFilters, 500);
+        }
+        
+        function sortTable(column) {
+            const currentSort = '{{ current_sort }}';
+            const currentOrder = '{{ current_order }}';
+            let newOrder = 'asc';
+            
+            if (currentSort === column && currentOrder === 'asc') {
+                newOrder = 'desc';
+            }
+            
+            const params = new URLSearchParams(window.location.search);
+            params.set('sort', column);
+            params.set('order', newOrder);
+            
+            window.location.href = '/database?' + params.toString();
+        }
+        
+        function clearFilters() {
+            window.location.href = '/database';
+        }
+        
+        function toggleSelectAll() {
+            const selectAll = document.getElementById('select-all');
+            const checkboxes = document.querySelectorAll('input[name="selected_records"]');
+            
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = selectAll.checked;
+            });
+            
+            updateSelectedCount();
+        }
+        
+        function updateSelectedCount() {
+            const checkboxes = document.querySelectorAll('input[name="selected_records"]:checked');
+            const count = checkboxes.length;
+            const selectedCount = document.getElementById('selected-count');
+            const printBtn = document.getElementById('print-btn');
+            
+            selectedCount.textContent = count + (count === 1 ? ' record selected' : ' records selected');
+            printBtn.disabled = count === 0;
+        }
+        
+        function deleteRecord(id, name) {
+            if (confirm(`Are you sure you want to delete "${name}"?`)) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '/database/delete/' + id;
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+        
+        // Initialize selected count on page load
+        document.addEventListener('DOMContentLoaded', updateSelectedCount);
+    </script>
+</body>
+</html>

@@ -38,18 +38,62 @@ class LabelFlowable(Flowable):
         self.b_side_y_offset = b_side_y_offset
         self.genre_y_offset = genre_y_offset
     
+    def _hex_to_color(self, hex_color: str):
+        """Convert hex color string to ReportLab Color object."""
+        if not hex_color or len(hex_color) < 6:
+            return colors.Color(0.87, 0.87, 0.87)  # Light gray fallback
+        
+        hex_color = hex_color.lstrip('#')
+        if len(hex_color) != 6:
+            return colors.Color(0.87, 0.87, 0.87)  # Light gray fallback
+        
+        try:
+            r = int(hex_color[0:2], 16) / 255.0
+            g = int(hex_color[2:4], 16) / 255.0
+            b = int(hex_color[4:6], 16) / 255.0
+            return colors.Color(r, g, b)
+        except ValueError:
+            return colors.Color(0.87, 0.87, 0.87)  # Light gray fallback
+    
+    def _get_genre_bg_color(self, genre_color):
+        """Create a lighter background version of the genre color."""
+        # Make the genre color much lighter for background (blend with white)
+        blend_factor = 0.15  # Use 15% of the genre color, 85% white
+        r = genre_color.red * blend_factor + 0.98 * (1 - blend_factor)
+        g = genre_color.green * blend_factor + 0.95 * (1 - blend_factor)
+        b = genre_color.blue * blend_factor + 0.97 * (1 - blend_factor)
+        return colors.Color(r, g, b)
+    
+    def _format_genre_text(self, genre: str) -> str:
+        """Format genre text for display on labels with special abbreviations."""
+        genre_lower = genre.lower()
+        
+        # Special cases
+        if genre_lower == 'unknown':
+            return ''  # Leave blank for unknown genres
+        elif genre_lower == 'country':
+            return 'CNTRY'
+        elif genre_lower == 'electronic':
+            return 'ELEC'
+        elif genre_lower == 'classical':
+            return 'CLASS'
+        else:
+            # Show up to 6 characters for other genres
+            return genre.upper()[:6]
+    
     def draw(self):
         """Draw a simple, clean jukebox label."""
         canvas = self.canv
         w, h = self.width, self.height
         
-        # Colors
-        bg_color = colors.Color(0.98, 0.95, 0.97)  # Light pink/cream
-        red_color = colors.Color(0.8, 0.15, 0.15)  # Deep red
+        # Get genre-specific colors
+        genre_config = self.genre_config.get_genre_config(self.label.genre)
+        genre_color = self._hex_to_color(genre_config['background_color'])
+        bg_color = self._get_genre_bg_color(genre_color)
         
         # Draw background
         canvas.setFillColor(bg_color)
-        canvas.setStrokeColor(red_color)
+        canvas.setStrokeColor(colors.black)
         canvas.setLineWidth(1)
         canvas.rect(0, 0, w, h, fill=1, stroke=1)
         
@@ -77,8 +121,8 @@ class LabelFlowable(Flowable):
         canvas.setFillColor(colors.white)
         canvas.rect(artist_banner_x, artist_box_y, artist_banner_width, artist_box_height, fill=1, stroke=1)
         
-        # Draw red genre tabs
-        canvas.setFillColor(red_color)
+        # Draw genre tabs with genre-specific color
+        canvas.setFillColor(genre_color)
         canvas.rect(0, genre_box_y, tab_width, genre_box_height, fill=1, stroke=1)  # Left
         canvas.rect(w - tab_width, genre_box_y, tab_width, genre_box_height, fill=1, stroke=1)  # Right
         
@@ -95,7 +139,7 @@ class LabelFlowable(Flowable):
         
         # Artist (middle banner, centered)
         canvas.setFont("Helvetica-Bold", 8)
-        artist_text = self.label.artist
+        artist_text = self.label.get_display_artist()
         artist_width = canvas.stringWidth(artist_text, "Helvetica-Bold", 8)
         # Center vertically in the artist box, with optional offset
         artist_text_y = artist_box_y + (artist_box_height / 2) - 4 + self.artist_y_offset  # -4 adjusts for font height
@@ -109,10 +153,11 @@ class LabelFlowable(Flowable):
         b_side_text_y = b_side_y + (b_side_height / 2) - 4 + self.b_side_y_offset  # -4 adjusts for font height
         canvas.drawString(w/2 - b_width/2, b_side_text_y, b_text)
         
-        # Genre in tabs (white text, small)
-        canvas.setFillColor(colors.white)
+        # Genre in tabs with genre-specific text color
+        genre_text_color = self._hex_to_color(genre_config['text_color'])
+        canvas.setFillColor(genre_text_color)
         canvas.setFont("Helvetica-Bold", 6)
-        genre = self.label.genre.upper()[:4]
+        genre = self._format_genre_text(self.label.genre)
         g_width = canvas.stringWidth(genre, "Helvetica-Bold", 6)
         
         # Center vertically in the genre tabs, with optional offset
@@ -134,6 +179,19 @@ class JukeBoxLabel:
     b_side: str
     genre: str
     background_color: Optional[str] = None
+    artist_a: Optional[str] = None
+    artist_b: Optional[str] = None
+    
+    def get_display_artist(self) -> str:
+        """Get the artist display text, combining different artists with // if needed."""
+        if self.artist_a and self.artist_b and self.artist_a != self.artist_b:
+            return f"{self.artist_a} // {self.artist_b}"
+        elif self.artist_a:
+            return self.artist_a
+        elif self.artist_b:
+            return self.artist_b
+        else:
+            return self.artist  # Fallback to original artist field
 
 
 class GenreConfig:
@@ -165,7 +223,11 @@ class GenreConfig:
                 'electronic': {'background_color': '#A29BFE', 'text_color': '#FFFFFF'},
                 'reggae': {'background_color': '#00B894', 'text_color': '#FFFFFF'},
                 'soul': {'background_color': '#E17055', 'text_color': '#FFFFFF'},
-                'default': {'background_color': '#DDD', 'text_color': '#333'}
+                'hip-hop': {'background_color': '#2D3436', 'text_color': '#FFFFFF'},
+                'funk': {'background_color': '#FD79A8', 'text_color': '#FFFFFF'},
+                'oldy': {'background_color': '#B8860B', 'text_color': '#FFFFFF'},
+                'disco': {'background_color': '#FF1493', 'text_color': '#FFFFFF'},
+                'default': {'background_color': '#DDDDDD', 'text_color': '#333333'}
             }
         }
     
@@ -179,8 +241,8 @@ class LabelGenerator:
     """Generates PDF files containing juke box labels."""
     
     def __init__(self, output_dir: str = "output", label_width_mm: float = 74.0, label_height_mm: float = 28.0,
-                 genre_box_width_pct: float = 25.0, genre_box_height_pct: float = 40.0,
-                 artist_box_height_pct: float = 50.0, a_side_y_offset: float = 2,
+                 genre_box_width_pct: float = 15.0, genre_box_height_pct: float = 12.0,
+                 artist_box_height_pct: float = 28.0, a_side_y_offset: float = 2,
                  artist_y_offset: float = 2, b_side_y_offset: float = 2, 
                  genre_y_offset: float = 2, gap_x_mm: float = 2.0, gap_y_mm: float = 2.0):
         self.output_dir = Path(output_dir)

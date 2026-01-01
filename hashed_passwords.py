@@ -1,0 +1,9 @@
+# Hashed passwords for jukebox users
+# Generated automatically - do not edit manually
+
+USERS = {
+    "catherine": "scrypt:32768:8:1$evPnxrmqnV1YPy6y$4b1107acec056fc152b602faa81dac062a195348bbc8ed06268ce966a1f6cb5280611dc8bb0884caa48fd056c51abb35e0035cd06e7a3ad1f1ccc39faa5a6fd6",
+    "tim": "scrypt:32768:8:1$uPn0oAr01cHdJmO5$d925d8118530ac611253599170db06725472c928657728a437b1937955f2f3850757f5ab69a5c9228738203fc4c37ef5651521a71bf119d03fffd5782f9d96ff",
+    "alex": "scrypt:32768:8:1$0VjXXFhhK20fsPcL$847463ed29b2f812e4471e1eea4604454659f90f2c4a98d31edefe3135d173211ac9deccf2f8ade32b14007676be0661bfc19b1c5c5d15700727ac46ac0f51cb",
+    "libby": "scrypt:32768:8:1$AybsTZqrH25sBdCr$dc81d1f9f7b6b13fd6e8b21117e9e883a792ba48d2982a865bbf17c135836440c344f7c9ddc31a4c953472742b1f87aec2a4475e9f25ae7c1573e70c737aee33",
+}

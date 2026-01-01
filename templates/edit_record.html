@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Record - Juke Box Label Generator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #d32f2f;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .nav-links {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 15px;
+            background-color: #f8f8f8;
+            border-radius: 5px;
+        }
+        .nav-links a {
+            color: #d32f2f;
+            text-decoration: none;
+            margin: 0 20px;
+            font-weight: bold;
+        }
+        .nav-links a:hover {
+            text-decoration: underline;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="text"], input[type="number"], select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+        .btn {
+            background-color: #d32f2f;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn:hover {
+            background-color: #b71c1c;
+        }
+        .btn-secondary {
+            background-color: #666;
+        }
+        .btn-secondary:hover {
+            background-color: #555;
+        }
+        .alert {
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .alert-error {
+            background-color: #ffebee;
+            border: 1px solid #f44336;
+            color: #d32f2f;
+        }
+        .form-actions {
+            text-align: center;
+            margin-top: 30px;
+        }
+        .help-text {
+            font-size: 14px;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎵 Edit Jukebox Record</h1>
+        
+        <div class="nav-links">
+            <a href="/">File Upload</a>
+            <a href="/manual">Manual Entry</a>
+            <a href="/database">Database</a>
+            <a href="/settings">Settings</a>
+        </div>
+        
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-error">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        <form method="post">
+            <div class="form-group">
+                <label for="artist_a_side">Artist A-Side:</label>
+                <input type="text" id="artist_a_side" name="artist_a_side" 
+                       value="{{ record.artist_a_side }}" placeholder="e.g., The Beatles" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="track_a_side">Track A-Side:</label>
+                <input type="text" id="track_a_side" name="track_a_side" 
+                       value="{{ record.track_a_side }}" placeholder="e.g., Hey Jude" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="artist_b_side">Artist B-Side:</label>
+                <input type="text" id="artist_b_side" name="artist_b_side" 
+                       value="{{ record.artist_b_side }}" placeholder="e.g., The Beatles" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="track_b_side">Track B-Side:</label>
+                <input type="text" id="track_b_side" name="track_b_side" 
+                       value="{{ record.track_b_side }}" placeholder="e.g., Revolution" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="status">Status:</label>
+                <select id="status" name="status" required>
+                    {% for status in statuses %}
+                    <option value="{{ status.value }}" 
+                            {% if record.status == status %}selected{% endif %}>
+                        {{ status.value }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="genre">Genre:</label>
+                <select id="genre" name="genre">
+                    <option value="" {% if not record.genre %}selected{% endif %}>Select Genre</option>
+                    <option value="Rock" {% if record.genre == 'Rock' %}selected{% endif %}>Rock</option>
+                    <option value="Pop" {% if record.genre == 'Pop' %}selected{% endif %}>Pop</option>
+                    <option value="Jazz" {% if record.genre == 'Jazz' %}selected{% endif %}>Jazz</option>
+                    <option value="Blues" {% if record.genre == 'Blues' %}selected{% endif %}>Blues</option>
+                    <option value="Country" {% if record.genre == 'Country' %}selected{% endif %}>Country</option>
+                    <option value="Classical" {% if record.genre == 'Classical' %}selected{% endif %}>Classical</option>
+                    <option value="Electronic" {% if record.genre == 'Electronic' %}selected{% endif %}>Electronic</option>
+                    <option value="Reggae" {% if record.genre == 'Reggae' %}selected{% endif %}>Reggae</option>
+                    <option value="Soul" {% if record.genre == 'Soul' %}selected{% endif %}>Soul</option>
+                    <option value="Hip-Hop" {% if record.genre == 'Hip-Hop' %}selected{% endif %}>Hip-Hop</option>
+                    <option value="Funk" {% if record.genre == 'Funk' %}selected{% endif %}>Funk</option>
+                    <option value="Other" {% if record.genre == 'Other' %}selected{% endif %}>Other</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="jukebox_id">Jukebox ID:</label>
+                <input type="text" id="jukebox_id" name="jukebox_id" 
+                       value="{{ record.jukebox_id or '' }}" placeholder="e.g., 001" 
+                       maxlength="3" pattern="[0-9]{3}">
+                <div class="help-text">3-digit number (001-999) or leave empty</div>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn">Update Record</button>
+                <a href="/database" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+    
+    <script>
+        // Format jukebox ID to always be 3 digits
+        document.getElementById('jukebox_id').addEventListener('blur', function() {
+            if (this.value && this.value.length > 0) {
+                const num = parseInt(this.value);
+                if (!isNaN(num) && num >= 1 && num <= 999) {
+                    this.value = num.toString().padStart(3, '0');
+                }
+            }
+        });
+    </script>
+</body>
+</html>

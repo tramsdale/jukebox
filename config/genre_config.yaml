@@ -32,6 +32,12 @@ genres:
   funk:
     background_color: '#FD79A8'  # Pink
     text_color: '#FFFFFF'
+  oldy:
+    background_color: '#B8860B'  # Dark goldenrod
+    text_color: '#FFFFFF'
+  disco:
+    background_color: '#FF1493'  # Deep pink
+    text_color: '#FFFFFF'
   default:
-    background_color: '#DDD'     # Light gray
-    text_color: '#333'
+    background_color: '#DDDDDD'     # Light gray
+    text_color: '#333333'

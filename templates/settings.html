@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Label Settings - Juke Box Label Generator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+            border-bottom: 3px solid #007bff;
+            padding-bottom: 15px;
+        }
+        
+        nav {
+            background-color: #007bff;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        
+        nav a {
+            color: white;
+            text-decoration: none;
+            padding: 8px 16px;
+            margin-right: 10px;
+            border-radius: 3px;
+            transition: background-color 0.3s;
+        }
+        
+        nav a:hover {
+            background-color: rgba(255,255,255,0.2);
+        }
+        
+        .settings-form {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+        
+        .form-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .form-section h3 {
+            margin-top: 0;
+            color: #495057;
+            border-bottom: 2px solid #dee2e6;
+            padding-bottom: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #495057;
+        }
+        
+        input[type="number"] {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 5px rgba(0,123,255,0.3);
+        }
+        
+        .button-group {
+            grid-column: 1 / -1;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #0056b3;
+        }
+        
+        .reset-btn {
+            background-color: #6c757d;
+        }
+        
+        .reset-btn:hover {
+            background-color: #5a6268;
+        }
+        
+        .success-message {
+            background-color: #d4edda;
+            color: #155724;
+            padding: 10px 15px;
+            border: 1px solid #c3e6cb;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        
+        .help-text {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 3px;
+        }
+        
+        @media (max-width: 768px) {
+            .settings-form {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <nav>
+            <a href="{{ url_for('index') }}">Home</a>
+            <a href="{{ url_for('manual_entry') }}">Manual Labels</a>
+            <a href="{{ url_for('database') }}">Database</a>
+            <a href="{{ url_for('settings') }}">Settings</a>
+        </nav>
+        
+        <h1>Label Settings</h1>
+        
+        {% if message %}
+            <div class="success-message">{{ message }}</div>
+        {% endif %}
+        
+        <form method="POST" class="settings-form">
+            <div class="form-section">
+                <h3>Label Dimensions</h3>
+                
+                <div class="form-group">
+                    <label for="width">Label Width (mm):</label>
+                    <input type="number" id="width" name="width" step="0.1" value="{{ width }}" required>
+                    <div class="help-text">The width of each label in millimeters</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="height">Label Height (mm):</label>
+                    <input type="number" id="height" name="height" step="0.1" value="{{ height }}" required>
+                    <div class="help-text">The height of each label in millimeters</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="gap_x_mm">Horizontal Gap (mm):</label>
+                    <input type="number" id="gap_x_mm" name="gap_x_mm" step="0.1" value="{{ gap_x_mm }}" required>
+                    <div class="help-text">Gap between labels horizontally</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="gap_y_mm">Vertical Gap (mm):</label>
+                    <input type="number" id="gap_y_mm" name="gap_y_mm" step="0.1" value="{{ gap_y_mm }}" required>
+                    <div class="help-text">Gap between labels vertically</div>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h3>Box Dimensions</h3>
+                
+                <div class="form-group">
+                    <label for="genre_box_width_pct">Genre Box Width (%):</label>
+                    <input type="number" id="genre_box_width_pct" name="genre_box_width_pct" step="0.1" value="{{ genre_box_width_pct }}" required>
+                    <div class="help-text">Width of the genre box as percentage of label width</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="genre_box_height_pct">Genre Box Height (%):</label>
+                    <input type="number" id="genre_box_height_pct" name="genre_box_height_pct" step="0.1" value="{{ genre_box_height_pct }}" required>
+                    <div class="help-text">Height of the genre box as percentage of label height</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="artist_box_height_pct">Artist Box Height (%):</label>
+                    <input type="number" id="artist_box_height_pct" name="artist_box_height_pct" step="0.1" value="{{ artist_box_height_pct }}" required>
+                    <div class="help-text">Height of the artist box as percentage of label height</div>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h3>Text Positioning</h3>
+                
+                <div class="form-group">
+                    <label for="a_side_y_offset">A-Side Y Offset (mm):</label>
+                    <input type="number" id="a_side_y_offset" name="a_side_y_offset" step="0.1" value="{{ a_side_y_offset }}" required>
+                    <div class="help-text">Vertical offset for A-side text positioning</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="artist_y_offset">Artist Y Offset (mm):</label>
+                    <input type="number" id="artist_y_offset" name="artist_y_offset" step="0.1" value="{{ artist_y_offset }}" required>
+                    <div class="help-text">Vertical offset for artist text positioning</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="b_side_y_offset">B-Side Y Offset (mm):</label>
+                    <input type="number" id="b_side_y_offset" name="b_side_y_offset" step="0.1" value="{{ b_side_y_offset }}" required>
+                    <div class="help-text">Vertical offset for B-side text positioning</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="genre_y_offset">Genre Y Offset (mm):</label>
+                    <input type="number" id="genre_y_offset" name="genre_y_offset" step="0.1" value="{{ genre_y_offset }}" required>
+                    <div class="help-text">Vertical offset for genre text positioning</div>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h3>Preview</h3>
+                
+                <div style="background: white; border: 2px solid #ddd; padding: 10px; margin: 10px 0; display: inline-block;">
+                    <div style="width: 100px; height: 40px; border: 1px solid #ccc; position: relative;">
+                        <div style="position: absolute; right: 0; top: 0; width: {{ 15 }}%; height: {{ 12 }}%; background: #f0f0f0; border: 1px solid #999; font-size: 8px; text-align: center;">Genre</div>
+                        <div style="position: absolute; left: 2px; top: {{ 2 }}px; font-size: 8px;">A-Side Track</div>
+                        <div style="position: absolute; left: 2px; top: {{ 12 }}px; font-size: 7px; font-weight: bold;">Artist Name</div>
+                        <div style="position: absolute; left: 2px; bottom: {{ 2 }}px; font-size: 8px;">B-Side Track</div>
+                    </div>
+                </div>
+                <div class="help-text">Approximate preview of label layout</div>
+            </div>
+            
+            <div class="button-group">
+                <button type="submit">Save Settings</button>
+                <button type="button" class="reset-btn" onclick="resetDefaults()">Reset to Defaults</button>
+            </div>
+        </form>
+    </div>
+    
+    <script>
+        function resetDefaults() {
+            if (confirm('Are you sure you want to reset all settings to default values?')) {
+                document.getElementById('width').value = '74.0';
+                document.getElementById('height').value = '28.0';
+                document.getElementById('genre_box_width_pct').value = '15.0';
+                document.getElementById('genre_box_height_pct').value = '12.0';
+                document.getElementById('artist_box_height_pct').value = '28.0';
+                document.getElementById('a_side_y_offset').value = '2.0';
+                document.getElementById('artist_y_offset').value = '2.0';
+                document.getElementById('b_side_y_offset').value = '2.0';
+                document.getElementById('genre_y_offset').value = '2.0';
+                document.getElementById('gap_x_mm').value = '2.0';
+                document.getElementById('gap_y_mm').value = '2.0';
+            }
+        }
+        
+        // Live preview updates
+        document.addEventListener('input', function(e) {
+            if (e.target.type === 'number') {
+                updatePreview();
+            }
+        });
+        
+        function updatePreview() {
+            // Could add real-time preview updates here if needed
+            console.log('Settings updated');
+        }
+    </script>
+</body>
+</html>
