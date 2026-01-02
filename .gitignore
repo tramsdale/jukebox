@@ -144,3 +144,5 @@ secrets.txt
 *.key
 *.pem
 node_modules
+
+.serverless/

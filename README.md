@@ -4,13 +4,28 @@ A Python web application for generating PDF files containing juke box labels wit
 
 ## Features
 
-- **Web Interface**: Simple, user-friendly web interface
+- **Web Interface**: Simple, user-friendly web interface with database management
+- **Database Storage**: DynamoDB backend for record management with full CRUD operations
+- **Spotify Integration**: Search and link tracks to Spotify for easy access
+  - Individual record Spotify search
+  - Bulk Spotify operations for multiple records
+  - Clickable Spotify links in database view
+- **Enhanced Label Generation**: 
+  - Genre-colored triangular arrows pointing toward center
+  - Auto-scaling text to prevent overflow
+  - Genre-specific border and background colors
+  - Artist display logic (shows "Artist A / Artist B" for different artists)
 - Generate PDF files with multiple juke box labels per page
 - Each label displays:
-  - Artist name
+  - Artist name(s)
   - A-side track name  
   - B-side track name
-  - Genre
+  - Genre with color coding
+- **Record Management**:
+  - Add, edit, and delete records through web interface
+  - Import records from CSV files
+  - Search and filter functionality
+  - Status tracking (New, In Jukebox, In Storage, Wishlist)
 - Configurable background colors based on genre
 - Customizable label dimensions in millimeters
 - Support for JSON and CSV input formats
@@ -164,6 +179,65 @@ Miles Davis,So What,Kind of Blue,Jazz
 - `reportlab`: PDF generation
 - `PyYAML`: YAML configuration files
 - `Pillow`: Image processing support
+
+## Deployment to AWS
+
+This application is configured for deployment to AWS Lambda using the Serverless Framework.
+
+### Prerequisites
+
+1. Install [Node.js](https://nodejs.org/) and npm
+2. Install the Serverless Framework:
+   ```bash
+   npm install -g serverless
+   ```
+3. Configure AWS credentials (AWS CLI or environment variables)
+4. Set up environment variables for Spotify integration (optional):
+   ```bash
+   export SPOTIFY_CLIENT_ID="your_spotify_client_id"
+   export SPOTIFY_CLIENT_SECRET="your_spotify_client_secret"
+   ```
+
+### Deployment
+
+1. Deploy to AWS Lambda:
+   ```bash
+   # Set environment variables (if using Spotify features)
+   export SPOTIFY_CLIENT_ID="your_spotify_client_id"
+   export SPOTIFY_CLIENT_SECRET="your_spotify_client_secret"
+   
+   # Deploy to AWS
+   npx serverless deploy
+   ```
+
+2. The deployment will create:
+   - AWS Lambda function for the Flask application
+   - API Gateway endpoints
+   - DynamoDB table for record storage
+   - CloudFormation stack
+
+### Environment Variables
+
+The application uses the following environment variables in production:
+
+- `SPOTIFY_CLIENT_ID`: Spotify Web API client ID (optional)
+- `SPOTIFY_CLIENT_SECRET`: Spotify Web API client secret (optional)
+- `SECRET_KEY`: Flask session secret key (auto-generated if not provided)
+- `DYNAMODB_TABLE`: DynamoDB table name (auto-configured)
+
+### Deploy Script
+
+A deployment script is included for convenience:
+
+```bash
+# Using the deploy script (if available)
+./deploy.sh
+```
+
+### Monitoring
+
+- View logs: `npx serverless logs -f app`
+- Remove deployment: `npx serverless remove`
 
 ## Development
 
