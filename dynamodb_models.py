@@ -30,6 +30,12 @@ class JukeboxRecord:
         self.created_at = kwargs.get('created_at', datetime.utcnow().isoformat())
         self.updated_at = kwargs.get('updated_at', datetime.utcnow().isoformat())
         
+        # Spotify integration fields
+        self.spotify_a_side_url = kwargs.get('spotify_a_side_url')
+        self.spotify_b_side_url = kwargs.get('spotify_b_side_url')
+        self.spotify_a_side_id = kwargs.get('spotify_a_side_id')
+        self.spotify_b_side_id = kwargs.get('spotify_b_side_id')
+        
         # Convert status to enum if it's a string
         if isinstance(self.status, str):
             self.status = JukeboxStatus(self.status)
@@ -58,6 +64,14 @@ class JukeboxRecord:
             item['genre'] = self.genre
         if self.jukebox_id:
             item['jukebox_id'] = self.jukebox_id
+        if self.spotify_a_side_url:
+            item['spotify_a_side_url'] = self.spotify_a_side_url
+        if self.spotify_b_side_url:
+            item['spotify_b_side_url'] = self.spotify_b_side_url
+        if self.spotify_a_side_id:
+            item['spotify_a_side_id'] = self.spotify_a_side_id
+        if self.spotify_b_side_id:
+            item['spotify_b_side_id'] = self.spotify_b_side_id
             
         self.table.put_item(Item=item)
         return self
@@ -78,7 +92,11 @@ class JukeboxRecord:
             'status': self.status.value,
             'jukebox_id': self.jukebox_id,
             'created_at': self.created_at,
-            'updated_at': self.updated_at
+            'updated_at': self.updated_at,
+            'spotify_a_side_url': self.spotify_a_side_url,
+            'spotify_b_side_url': self.spotify_b_side_url,
+            'spotify_a_side_id': self.spotify_a_side_id,
+            'spotify_b_side_id': self.spotify_b_side_id
         }
     
     def to_jukebox_label(self, use_a_side=True):
@@ -87,19 +105,76 @@ class JukeboxRecord:
         
         if use_a_side:
             return JukeBoxLabel(
-                artist=self.artist_a_side,
+                artist=self.artist_a_side,  # Fallback for compatibility
+                artist_a=self.artist_a_side,
+                artist_b=self.artist_b_side,
                 a_side=self.track_a_side,
                 b_side=self.track_b_side,
                 genre=self.genre or "Unknown"
             )
         else:
             return JukeBoxLabel(
-                artist=self.artist_b_side or self.artist_a_side,
+                artist=self.artist_b_side or self.artist_a_side,  # Fallback for compatibility
+                artist_a=self.artist_b_side or self.artist_a_side,
+                artist_b=self.artist_a_side,
                 a_side=self.track_b_side,
                 b_side=self.track_a_side,
                 genre=self.genre or "Unknown"
             )
+
+    def fetch_spotify_links(self, force_refresh=False):
+        """
+        Fetch Spotify links for A-side and B-side tracks.
+        
+        Args:
+            force_refresh: If True, fetch new links even if they already exist
+            
+        Returns:
+            Dictionary with success status and any errors
+        """
+        from spotify_service import spotify_service
+        
+        if not spotify_service.is_available():
+            return {
+                'success': False,
+                'error': 'Spotify service not available. Check API credentials.'
+            }
+        
+        results = {'success': True, 'errors': []}
+        
+        # Fetch A-side Spotify link
+        if (not self.spotify_a_side_url or force_refresh) and self.track_a_side and self.artist_a_side:
+            try:
+                spotify_info = spotify_service.search_track(self.artist_a_side, self.track_a_side)
+                if spotify_info:
+                    self.spotify_a_side_url = spotify_info['spotify_url']
+                    self.spotify_a_side_id = spotify_info['spotify_id']
+                else:
+                    results['errors'].append(f"No Spotify match found for A-side: {self.artist_a_side} - {self.track_a_side}")
+            except Exception as e:
+                results['errors'].append(f"Error fetching A-side Spotify link: {str(e)}")
+        
+        # Fetch B-side Spotify link
+        if (not self.spotify_b_side_url or force_refresh) and self.track_b_side:
+            try:
+                # Use B-side artist if available, otherwise use A-side artist
+                b_artist = self.artist_b_side or self.artist_a_side
+                spotify_info = spotify_service.search_track(b_artist, self.track_b_side)
+                if spotify_info:
+                    self.spotify_b_side_url = spotify_info['spotify_url']
+                    self.spotify_b_side_id = spotify_info['spotify_id']
+                else:
+                    results['errors'].append(f"No Spotify match found for B-side: {b_artist} - {self.track_b_side}")
+            except Exception as e:
+                results['errors'].append(f"Error fetching B-side Spotify link: {str(e)}")
+        
+        # Save if we found any links
+        if self.spotify_a_side_url or self.spotify_b_side_url:
+            self.save()
+        
+        return results
     
+
     @classmethod
     def from_dynamodb_item(cls, item: Dict[str, Any]):
         """Create JukeboxRecord from DynamoDB item"""
@@ -113,7 +188,11 @@ class JukeboxRecord:
             status=item['status'],
             jukebox_id=item.get('jukebox_id'),
             created_at=item.get('created_at'),
-            updated_at=item.get('updated_at')
+            updated_at=item.get('updated_at'),
+            spotify_a_side_url=item.get('spotify_a_side_url'),
+            spotify_b_side_url=item.get('spotify_b_side_url'),
+            spotify_a_side_id=item.get('spotify_a_side_id'),
+            spotify_b_side_id=item.get('spotify_b_side_id')
         )
     
     @classmethod

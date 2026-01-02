@@ -18,6 +18,8 @@ provider:
     FLASK_ENV: production
     DYNAMODB_TABLE: jukebox-records-${self:provider.stage}
     SECRET_KEY: ${env:SECRET_KEY, ''}
+    SPOTIFY_CLIENT_ID: ${env:SPOTIFY_CLIENT_ID, ''}
+    SPOTIFY_CLIENT_SECRET: ${env:SPOTIFY_CLIENT_SECRET, ''}
     
   iamRoleStatements:
     - Effect: Allow

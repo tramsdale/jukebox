@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spotify Bulk Operations</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .stats { background: #f5f5f5; padding: 20px; margin-bottom: 20px; border-radius: 5px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, button { padding: 10px; margin: 5px 0; }
+        button { background: #007cba; color: white; border: none; border-radius: 3px; cursor: pointer; }
+        button:hover { background: #005a8a; }
+        .warning { background: #fff3cd; border: 1px solid #ffeaa7; padding: 10px; margin: 10px 0; border-radius: 3px; }
+        .back-link { display: inline-block; margin-bottom: 20px; color: #007cba; text-decoration: none; }
+        .back-link:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="{{ url_for('database') }}" class="back-link">← Back to Database</a>
+        
+        <h1>Spotify Bulk Operations</h1>
+        
+        <div class="stats">
+            <h2>Database Statistics</h2>
+            <p><strong>Total Records:</strong> {{ total_records }}</p>
+            <p><strong>Records with Spotify Links:</strong> {{ records_with_spotify }}</p>
+            <p><strong>Records without Spotify:</strong> {{ total_records - records_with_spotify }}</p>
+        </div>
+        
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="warning">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        <h2>Bulk Spotify Search</h2>
+        <p>Search for Spotify links for multiple records at once. This process may take some time.</p>
+        
+        <div class="warning">
+            <strong>Note:</strong> This operation uses the Spotify Web API which has rate limits. 
+            Processing large batches may take time or fail if limits are exceeded.
+        </div>
+        
+        <form method="post">
+            <input type="hidden" name="action" value="bulk_search">
+            
+            <div class="form-group">
+                <label for="limit">Number of records to process (optional):</label>
+                <input type="number" name="limit" id="limit" placeholder="Leave blank to process all records" min="1" max="100">
+                <small>Maximum 100 records per batch to avoid timeouts</small>
+            </div>
+            
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="force_refresh"> 
+                    Force refresh (update records that already have Spotify links)
+                </label>
+            </div>
+            
+            <button type="submit">Start Bulk Spotify Search</button>
+        </form>
+        
+        <h3>How it works:</h3>
+        <ul>
+            <li>Searches for each track using Artist + Track Name on Spotify</li>
+            <li>Saves the first matching result URL and ID</li>
+            <li>Skips records that already have links (unless "Force refresh" is checked)</li>
+            <li>Shows progress and any errors encountered</li>
+        </ul>
+    </div>
+</body>
+</html>

@@ -11,6 +11,7 @@ pymysql>=1.1.0
 reportlab>=4.0.0
 pyyaml>=6.0.0
 werkzeug>=3.0.0
+spotipy>=2.24.0
 
 # Development/testing (optional for Lambda)
 # pytest>=8.0.0

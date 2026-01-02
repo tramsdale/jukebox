@@ -649,7 +649,26 @@ def add_record():
                 jukebox_id=request.form['jukebox_id'] if request.form['jukebox_id'] else None
             )
             record.save()
-            flash('Record added successfully!')
+            
+            # If user requested Spotify search, fetch links
+            if 'fetch_spotify' in request.form and request.form['fetch_spotify']:
+                try:
+                    spotify_result = record.fetch_spotify_links()
+                    if spotify_result['success']:
+                        if record.spotify_a_side_url or record.spotify_b_side_url:
+                            flash('Record added successfully with Spotify links!')
+                        else:
+                            flash('Record added successfully, but no Spotify links found.')
+                        if spotify_result.get('errors'):
+                            for error in spotify_result['errors']:
+                                flash(f'Spotify warning: {error}', 'warning')
+                    else:
+                        flash('Record added successfully, but Spotify search failed.', 'warning')
+                except Exception as e:
+                    flash(f'Record added successfully, but Spotify search error: {str(e)}', 'warning')
+            else:
+                flash('Record added successfully!')
+                
             return redirect(url_for('database'))
         except Exception as e:
             flash(f'Error adding record: {str(e)}')
@@ -859,6 +878,137 @@ def import_csv():
             flash('Please upload a CSV file')
     
     return render_template('import_csv.html')
+
+# Spotify Integration Routes
+@app.route('/api/fetch-spotify-links/<record_id>', methods=['POST'])
+@login_required
+def fetch_spotify_links(record_id):
+    """Fetch Spotify links for a specific record via AJAX."""
+    try:
+        record = JukeboxRecord.get_by_id(record_id)
+        if not record:
+            return jsonify({'success': False, 'error': 'Record not found'}), 404
+        
+        # Try to fetch Spotify links
+        result = record.fetch_spotify_links(force_refresh=True)
+        
+        if result['success']:
+            response_data = {
+                'success': True,
+                'spotify_a_side_url': record.spotify_a_side_url,
+                'spotify_b_side_url': record.spotify_b_side_url,
+                'spotify_a_side_id': record.spotify_a_side_id,
+                'spotify_b_side_id': record.spotify_b_side_id
+            }
+            
+            if result.get('errors'):
+                response_data['warnings'] = result['errors']
+                
+            return jsonify(response_data)
+        else:
+            return jsonify({
+                'success': False,
+                'error': result.get('error', 'Failed to fetch Spotify links')
+            }), 500
+    
+    except Exception as e:
+        app.logger.error(f"Error fetching Spotify links for record {record_id}: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/bulk-spotify-search', methods=['POST'])
+@login_required  
+def bulk_spotify_search():
+    """Bulk search for Spotify links for all records."""
+    try:
+        data = request.get_json() or {}
+        force_refresh = data.get('force_refresh', False)
+        limit = data.get('limit', None)
+        
+        # Get all records
+        records = JukeboxRecord.scan_all()
+        
+        if limit:
+            records = records[:limit]
+        
+        successful_updates = 0
+        errors = []
+        
+        for record in records:
+            try:
+                # Skip if already has links and not forcing refresh
+                if not force_refresh and record.spotify_a_side_url and record.spotify_b_side_url:
+                    continue
+                
+                result = record.fetch_spotify_links(force_refresh=force_refresh)
+                
+                if result['success'] and (record.spotify_a_side_url or record.spotify_b_side_url):
+                    successful_updates += 1
+                    
+                if result.get('errors'):
+                    errors.extend(result['errors'])
+                    
+            except Exception as e:
+                errors.append(f"Record {record.id}: {str(e)}")
+        
+        return jsonify({
+            'success': True,
+            'updated_count': successful_updates,
+            'total_processed': len(records),
+            'errors': errors[:10]  # Limit errors in response
+        })
+        
+    except Exception as e:
+        app.logger.error(f"Error in bulk Spotify search: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/spotify-bulk', methods=['GET', 'POST'])
+@login_required
+def spotify_bulk():
+    """Bulk Spotify operations page."""
+    if request.method == 'POST':
+        try:
+            action = request.form.get('action')
+            
+            if action == 'bulk_search':
+                force_refresh = 'force_refresh' in request.form
+                limit = request.form.get('limit')
+                limit = int(limit) if limit and limit.isdigit() else None
+                
+                # Redirect to API endpoint to handle the actual processing
+                # This could be done via AJAX instead for better UX
+                flash(f'Starting bulk Spotify search for {"all" if not limit else limit} records...')
+                
+                # For now, we'll process a limited number synchronously
+                if not limit:
+                    limit = 50  # Process max 50 at once to avoid timeouts
+                
+                records = JukeboxRecord.scan_all()[:limit]
+                successful_updates = 0
+                
+                for record in records:
+                    try:
+                        if not force_refresh and record.spotify_a_side_url and record.spotify_b_side_url:
+                            continue
+                            
+                        result = record.fetch_spotify_links(force_refresh=force_refresh)
+                        if result['success'] and (record.spotify_a_side_url or record.spotify_b_side_url):
+                            successful_updates += 1
+                    except Exception as e:
+                        app.logger.error(f"Error processing record {record.id}: {str(e)}")
+                
+                flash(f'Successfully updated Spotify links for {successful_updates} records.')
+                
+        except Exception as e:
+            flash(f'Error: {str(e)}')
+    
+    # Get stats for display
+    records = JukeboxRecord.scan_all()
+    total_records = len(records)
+    records_with_spotify = sum(1 for r in records if r.spotify_a_side_url or r.spotify_b_side_url)
+    
+    return render_template('spotify_bulk.html', 
+                         total_records=total_records,
+                         records_with_spotify=records_with_spotify)
 
 if __name__ == '__main__':
     app.run(debug=True)

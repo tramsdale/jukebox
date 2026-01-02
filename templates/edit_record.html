@@ -96,6 +96,46 @@
             color: #666;
             margin-top: 5px;
         }
+        .spotify-section {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+            margin: 20px 0;
+        }
+        .spotify-section h3 {
+            color: #1DB954;
+            margin-top: 0;
+            margin-bottom: 15px;
+        }
+        .spotify-link-item {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: white;
+            border-radius: 4px;
+            border: 1px solid #dee2e6;
+        }
+        .spotify-link-btn {
+            color: #1DB954 !important;
+            text-decoration: none !important;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .spotify-link-btn:hover {
+            text-decoration: underline !important;
+        }
+        .remove-link-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .remove-link-btn:hover {
+            background: #c82333;
+        }
     </style>
 </head>
 <body>
@@ -106,6 +146,7 @@
             <a href="/">File Upload</a>
             <a href="/manual">Manual Entry</a>
             <a href="/database">Database</a>
+            <a href="/spotify-bulk">Spotify Bulk</a>
             <a href="/settings">Settings</a>
         </div>
         
@@ -175,6 +216,37 @@
                 </select>
             </div>
             
+            <div class="form-group spotify-section">
+                <h3>Spotify Links</h3>
+                <div class="spotify-links-display">
+                    {% if record.spotify_a_side_url %}
+                        <div class="spotify-link-item">
+                            <strong>A-Side:</strong> 
+                            <a href="{{ record.spotify_a_side_url }}" target="_blank" class="spotify-link-btn">🎵 {{ record.track_a_side }}</a>
+                            <button type="button" class="remove-link-btn" data-side="a">Remove</button>
+                        </div>
+                    {% endif %}
+                    {% if record.spotify_b_side_url %}
+                        <div class="spotify-link-item">
+                            <strong>B-Side:</strong> 
+                            <a href="{{ record.spotify_b_side_url }}" target="_blank" class="spotify-link-btn">🎵 {{ record.track_b_side }}</a>
+                            <button type="button" class="remove-link-btn" data-side="b">Remove</button>
+                        </div>
+                    {% endif %}
+                </div>
+                <button type="button" id="fetch-spotify-btn" class="btn btn-secondary">
+                    {% if record.spotify_a_side_url or record.spotify_b_side_url %}
+                        🔄 Refresh Spotify Links
+                    {% else %}
+                        🔍 Find Spotify Links
+                    {% endif %}
+                </button>
+                <input type="hidden" name="spotify_a_side_url" value="{{ record.spotify_a_side_url or '' }}">
+                <input type="hidden" name="spotify_b_side_url" value="{{ record.spotify_b_side_url or '' }}">
+                <input type="hidden" name="spotify_a_side_id" value="{{ record.spotify_a_side_id or '' }}">
+                <input type="hidden" name="spotify_b_side_id" value="{{ record.spotify_b_side_id or '' }}">
+            </div>
+            
             <div class="form-group">
                 <label for="jukebox_id">Jukebox ID:</label>
                 <input type="text" id="jukebox_id" name="jukebox_id" 
@@ -199,6 +271,76 @@
                     this.value = num.toString().padStart(3, '0');
                 }
             }
+        });
+    </script>
+    
+    <script>
+        // Spotify functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const fetchSpotifyBtn = document.getElementById('fetch-spotify-btn');
+            const removeButtons = document.querySelectorAll('.remove-link-btn');
+            
+            // Fetch Spotify links
+            if (fetchSpotifyBtn) {
+                fetchSpotifyBtn.addEventListener('click', function() {
+                    const recordId = '{{ record.id }}';
+                    const originalText = this.innerHTML;
+                    
+                    this.disabled = true;
+                    this.innerHTML = '⏳ Searching...';
+                    
+                    fetch(`/api/fetch-spotify-links/${recordId}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Update the form with new Spotify links
+                            if (data.spotify_a_side_url) {
+                                document.querySelector('input[name=\"spotify_a_side_url\"]').value = data.spotify_a_side_url;
+                                document.querySelector('input[name=\"spotify_a_side_id\"]').value = data.spotify_a_side_id || '';
+                            }
+                            if (data.spotify_b_side_url) {
+                                document.querySelector('input[name=\"spotify_b_side_url\"]').value = data.spotify_b_side_url;
+                                document.querySelector('input[name=\"spotify_b_side_id\"]').value = data.spotify_b_side_id || '';
+                            }
+                            
+                            // Reload the page to show the updated links
+                            window.location.reload();
+                        } else {
+                            alert('Failed to fetch Spotify links: ' + (data.error || 'Unknown error'));
+                            this.disabled = false;
+                            this.innerHTML = originalText;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Error fetching Spotify links');
+                        this.disabled = false;
+                        this.innerHTML = originalText;
+                    });
+                });
+            }
+            
+            // Remove Spotify links
+            removeButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const side = this.dataset.side;
+                    if (side === 'a') {
+                        document.querySelector('input[name=\"spotify_a_side_url\"]').value = '';
+                        document.querySelector('input[name=\"spotify_a_side_id\"]').value = '';
+                    } else if (side === 'b') {
+                        document.querySelector('input[name=\"spotify_b_side_url\"]').value = '';
+                        document.querySelector('input[name=\"spotify_b_side_id\"]').value = '';
+                    }
+                    
+                    // Hide the link item
+                    this.closest('.spotify-link-item').style.display = 'none';
+                });
+            });
         });
     </script>
 </body>

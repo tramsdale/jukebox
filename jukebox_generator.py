@@ -143,6 +143,37 @@ class LabelFlowable(Flowable):
         canvas.rect(0, genre_box_y, tab_width, genre_box_height, fill=1, stroke=1)  # Left
         canvas.rect(w - tab_width, genre_box_y, tab_width, genre_box_height, fill=1, stroke=1)  # Right
         
+        # Draw triangular arrows pointing toward center
+        # Triangle dimensions: equilateral with base and height equal to genre box height
+        triangle_size = genre_box_height
+        triangle_center_y = genre_box_y + genre_box_height/2
+        
+        # Left arrow (pointing right toward center)
+        left_triangle_tip_x = tab_width + triangle_size
+        left_triangle_base_x = tab_width
+        
+        canvas.setFillColor(genre_color)
+        
+        # Create path for left triangle
+        path = canvas.beginPath()
+        path.moveTo(left_triangle_base_x, triangle_center_y - triangle_size/2)  # Bottom left
+        path.lineTo(left_triangle_base_x, triangle_center_y + triangle_size/2)  # Top left
+        path.lineTo(left_triangle_tip_x, triangle_center_y)  # Right tip
+        path.close()
+        canvas.drawPath(path, fill=1, stroke=0)
+        
+        # Right arrow (pointing left toward center)  
+        right_triangle_tip_x = w - tab_width - triangle_size
+        right_triangle_base_x = w - tab_width
+        
+        # Create path for right triangle
+        path = canvas.beginPath()
+        path.moveTo(right_triangle_base_x, triangle_center_y - triangle_size/2)  # Bottom right
+        path.lineTo(right_triangle_base_x, triangle_center_y + triangle_size/2)  # Top right
+        path.lineTo(right_triangle_tip_x, triangle_center_y)  # Left tip
+        path.close()
+        canvas.drawPath(path, fill=1, stroke=0)
+        
         # Text - keep it simple and readable
         canvas.setFillColor(colors.black)
         
@@ -209,9 +240,9 @@ class JukeBoxLabel:
     artist_b: Optional[str] = None
     
     def get_display_artist(self) -> str:
-        """Get the artist display text, combining different artists with // if needed."""
+        """Get the artist display text, combining different artists with / if needed."""
         if self.artist_a and self.artist_b and self.artist_a != self.artist_b:
-            return f"{self.artist_a} // {self.artist_b}"
+            return f"{self.artist_a} / {self.artist_b}"
         elif self.artist_a:
             return self.artist_a
         elif self.artist_b:

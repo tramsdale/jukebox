@@ -22,7 +22,7 @@ genres:
   country:
     background_color: '#75147C'  # Purple
     label_background_color: '#D4A3DA'  # Very light purple
-    text_color: '#2D3436'
+    text_color: '#FFFFFF'
   electronic:
     background_color: '#A29BFE'  # Light purple
     label_background_color: '#F8F7FF'  # Very light purple
